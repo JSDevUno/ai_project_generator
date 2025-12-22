@@ -1,0 +1,24 @@
+{
+  "name": "ai-project-generator",
+  "version": "1.0.0",
+  "description": "Universal AI Project Generator with Real-time Progress",
+  "scripts": {
+    "build": "cd frontend && npm install && npm run build && cd ../backend && npm install && npm run build",
+    "dev": "concurrently \"cd backend && npm run dev\" \"cd frontend && npm run dev\"",
+    "start": "cd backend && npm start",
+    "deploy": "powershell -ExecutionPolicy Bypass -File scripts/deploy.ps1",
+    "deploy-bash": "bash scripts/deploy.sh",
+    "test": "cd backend && npm test && cd ../frontend && npm test",
+    "lint": "cd backend && npm run lint && cd ../frontend && npm run lint"
+  },
+  "keywords": ["ai", "ml", "project-generator", "typescript", "react", "real-time", "progress"],
+  "author": "JSDevUno",
+  "license": "MIT",
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/JSDevUno/ai_project_generator.git"
+  },
+  "devDependencies": {
+    "concurrently": "^8.2.2"
+  }
+}
