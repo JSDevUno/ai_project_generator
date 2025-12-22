@@ -1,5 +1,10 @@
-import type { GeneratedFile } from './MLScriptGenerator.js';
 import { FileText, BookOpen, FileCode, Download, CheckCircle } from 'lucide-react';
+
+export interface GeneratedFile {
+    filename: string;
+    content: string;
+    type: 'python' | 'notebook' | 'markdown' | 'text';
+}
 
 interface FileDownloaderProps {
     files: GeneratedFile[];
