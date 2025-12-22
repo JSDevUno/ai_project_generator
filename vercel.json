@@ -10,7 +10,10 @@
     },
     {
       "src": "backend/src/app.ts",
-      "use": "@vercel/node"
+      "use": "@vercel/node",
+      "config": {
+        "maxLambdaSize": "50mb"
+      }
     }
   ],
   "routes": [
@@ -25,11 +28,6 @@
   ],
   "env": {
     "NODE_ENV": "production"
-  },
-  "functions": {
-    "backend/src/app.ts": {
-      "maxDuration": 300
-    }
   },
   "buildCommand": "npm run build"
 }
