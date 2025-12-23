@@ -299,8 +299,31 @@ export class ProjectGenerator {
                 continue;
             }
 
-            // Calculate indentation level (assuming 4 spaces per level)
-            const indentLevel = Math.floor((line.match(/^(\s*)/)?.[1]?.length || 0) / 4);
+            // Calculate indentation level by counting tree structure depth
+            // Count the depth based on tree characters and spaces
+            let indentLevel = 0;
+            let pos = 0;
+            
+            // Skip initial spaces
+            while (pos < line.length && line[pos] === ' ') {
+                pos++;
+            }
+            
+            // Count tree structure levels
+            while (pos < line.length) {
+                const char = line[pos];
+                if (char === '│' || char === '├' || char === '└' || char === '─') {
+                    if (char === '├' || char === '└') {
+                        indentLevel++;
+                        break; // This is the actual item
+                    }
+                    pos++;
+                } else if (char === ' ') {
+                    pos++;
+                } else {
+                    break;
+                }
+            }
 
             // Parse tree structure format with flexible matching
             const treeMatch = line.match(/^[\s│├└─]*([a-zA-Z0-9_.-]+(?:\/[a-zA-Z0-9_.-]*)*\/?)(?:\s*#\s*(.*))?$/);
@@ -311,7 +334,7 @@ export class ProjectGenerator {
                 console.log(`[ProjectGenerator] 🔍 Line ${i}: "${line}" → Item: "${pathItem}", Indent: ${indentLevel}`);
 
                 // Adjust folder stack based on indentation - CORRECTED LOGIC
-                folderStack.length = Math.max(0, indentLevel);
+                folderStack.length = Math.max(0, indentLevel - 1);
 
                 if (pathItem.endsWith('/')) {
                     // It's a folder

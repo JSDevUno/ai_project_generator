@@ -164,12 +164,25 @@ Include complete folder structure and file organization.
 
   private buildUniversalPlanPrompt(projectName: string, instruction: string): string {
     return `
-Create an AI project plan:
+You are creating an AI project plan. Follow the user's EXACT requirements without adding extra files or features.
 
 Project Name: ${projectName}
 User Request: ${instruction}
 
-Generate a project plan that implements what the user described. Include the project structure, files needed, and implementation approach.
+CRITICAL RULES:
+1. If the user specifies what files they want, generate ONLY those files
+2. If the user says "it must contain X, Y, Z", generate ONLY X, Y, Z (plus any folders they mention)
+3. Do NOT add "helpful" extra files unless explicitly requested
+4. Do NOT assume they want additional utilities, configs, or scripts
+
+Generate a project plan that includes EXACTLY what the user described, nothing more.
+
+Focus on:
+- Project structure with only the requested files/folders
+- Implementation details for each requested component
+- Technical specifications that fulfill their requirements
+
+Keep it simple and focused on their actual needs.
 `;
   }
 }
