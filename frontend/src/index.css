@@ -7,10 +7,40 @@ html, body {
   -moz-osx-font-smoothing: grayscale;
 }
 
+/* Mobile optimizations */
+@media (max-width: 640px) {
+  body {
+    font-size: 14px;
+  }
+  
+  /* Prevent horizontal scroll */
+  html, body {
+    overflow-x: hidden;
+  }
+  
+  /* Better touch targets */
+  button, input, textarea, select {
+    min-height: 44px;
+  }
+  
+  /* Improve text readability on mobile */
+  .prose {
+    font-size: 14px;
+    line-height: 1.6;
+  }
+}
+
 /* Custom scrollbars */
 ::-webkit-scrollbar {
-  width: 10px;
-  height: 10px;
+  width: 8px;
+  height: 8px;
+}
+
+@media (min-width: 640px) {
+  ::-webkit-scrollbar {
+    width: 10px;
+    height: 10px;
+  }
 }
 
 ::-webkit-scrollbar-track {
@@ -24,4 +54,17 @@ html, body {
 
 ::-webkit-scrollbar-thumb:hover {
   background: #9ca3af;
+}
+
+/* Mobile-friendly code blocks */
+@media (max-width: 640px) {
+  pre {
+    font-size: 12px;
+    padding: 8px;
+    overflow-x: auto;
+  }
+  
+  code {
+    font-size: 12px;
+  }
 }

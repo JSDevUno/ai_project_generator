@@ -17,10 +17,19 @@ export class PlanGenerator {
     const selectedModel = model || 'kwaipilot/kat-coder-pro:free';
     const prompt = this.buildUniversalPlanPrompt(projectName, instruction);
 
+    console.log('[PlanGenerator] Starting plan generation...');
+    console.log('[PlanGenerator] Model:', selectedModel);
+    console.log('[PlanGenerator] Project:', projectName);
+
     const controller = new AbortController();
-    const timeoutId = setTimeout(() => controller.abort(), 60000); // 60 second timeout
+    const timeoutId = setTimeout(() => {
+      console.log('[PlanGenerator] Request timeout after 60 seconds');
+      controller.abort();
+    }, 60000); // 60 second timeout
 
     try {
+      console.log('[PlanGenerator] Making request to OpenRouter...');
+
       const response = await fetch(this.baseUrl, {
         method: 'POST',
         headers: {
@@ -36,24 +45,43 @@ export class PlanGenerator {
             content: prompt,
           }],
           stream: false,
+          max_tokens: 4000,
+          temperature: 0.7,
         }),
         signal: controller.signal,
       });
 
       console.log('[PlanGenerator] OpenRouter Response Status:', response.status);
-      console.log('[PlanGenerator] Using model:', selectedModel);
+      console.log('[PlanGenerator] Response Headers:', Object.fromEntries(response.headers.entries()));
+
       clearTimeout(timeoutId);
 
       if (!response.ok) {
-        throw new Error(`OpenRouter API error: ${response.status} ${response.statusText}`);
+        const errorText = await response.text();
+        console.error('[PlanGenerator] API Error Response:', errorText);
+        throw new Error(`OpenRouter API error: ${response.status} ${response.statusText} - ${errorText}`);
       }
 
       const data = await response.json();
+      console.log('[PlanGenerator] Response received successfully');
+
+      if (!data.choices || !data.choices[0] || !data.choices[0].message) {
+        console.error('[PlanGenerator] Invalid response structure:', data);
+        throw new Error('Invalid response from OpenRouter API');
+      }
+
       return data.choices[0].message.content || 'Failed to generate plan';
     } catch (error) {
       clearTimeout(timeoutId);
-      if (error instanceof Error && error.name === 'AbortError') {
-        throw new Error('Request timeout - please try again');
+      console.error('[PlanGenerator] Error details:', error);
+
+      if (error instanceof Error) {
+        if (error.name === 'AbortError') {
+          throw new Error('Request timeout - please try again');
+        }
+        if (error.message.includes('terminated')) {
+          throw new Error('Connection lost to AI service - please check your internet connection and try again');
+        }
       }
       throw error;
     }
@@ -61,7 +89,7 @@ export class PlanGenerator {
 
   async rethinkPlan(projectName: string, instruction: string, feedback?: string, model?: string): Promise<string> {
     const selectedModel = model || 'kwaipilot/kat-coder-pro:free';
-    
+
     let prompt;
     if (feedback && feedback.trim()) {
       // User provided specific feedback
@@ -136,76 +164,12 @@ Include complete folder structure and file organization.
 
   private buildUniversalPlanPrompt(projectName: string, instruction: string): string {
     return `
-Create a comprehensive AI project plan for ANY type of AI/ML project:
+Create an AI project plan:
 
 Project Name: ${projectName}
 User Request: ${instruction}
 
-ANALYZE THE REQUEST AND DETERMINE:
-1. **AI Domain**: Computer Vision, NLP, Audio, Traditional ML, Deep Learning, RL, etc.
-2. **Frameworks Needed**: PyTorch, TensorFlow, sklearn, transformers, ultralytics, etc.
-3. **Project Complexity**: Simple classifier, complex pipeline, multi-model system, etc.
-
-GENERATE A COMPLETE PROJECT PLAN INCLUDING:
-
-**1. PROJECT STRUCTURE**
-Define the complete folder hierarchy appropriate for this AI type:
-- data/ (raw, processed, train, val, test as needed)
-- models/ (checkpoints, exports, pretrained as needed)
-- src/ (all Python modules)
-- configs/ (configuration files)
-- results/ (logs, plots, metrics, outputs)
-- deployment/ (if applicable)
-- notebooks/ (if needed for exploration)
-- scripts/ (utility scripts)
-- requirements.txt, README.md, setup files
-
-**2. PYTHON FILES TO GENERATE**
-List ALL Python files needed:
-- Data preprocessing/loading modules
-- Model architecture definitions
-- Training script with epoch logging
-- Inference/prediction scripts
-- Evaluation and metrics modules
-- Utility functions
-- Configuration management
-- Export/conversion scripts (ONNX, TensorRT, etc.)
-
-**3. TRAINING APPROACH**
-- Model architecture details
-- Training loop with comprehensive logging
-- Validation strategy
-- Checkpointing and model saving
-- Hyperparameter configuration
-- Progress tracking and visualization
-
-**4. DATA PIPELINE**
-- Data loading and preprocessing
-- Augmentation strategies (if applicable)
-- Batch processing
-- Data validation and quality checks
-
-**5. EVALUATION & METRICS**
-- Appropriate metrics for the AI type
-- Validation procedures
-- Testing protocols
-- Performance visualization
-
-**6. DEPLOYMENT PREPARATION**
-- Model export formats
-- Inference optimization
-- API endpoints (if needed)
-- Docker containerization (if applicable)
-
-**7. DOCUMENTATION**
-- Setup instructions
-- Usage examples
-- API documentation
-- Training guides
-
-The plan should be detailed enough to generate a complete, working AI project that the user can immediately use and extend. Include specific technical details about the architecture, training process, and implementation approach.
-
-Make this plan work for ANY AI project type - from simple sklearn models to complex transformer architectures, computer vision pipelines, or reinforcement learning systems.
+Generate a project plan that implements what the user described. Include the project structure, files needed, and implementation approach.
 `;
   }
 }

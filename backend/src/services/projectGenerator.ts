@@ -26,9 +26,109 @@ export interface PlanStructure {
 export class ProjectGenerator {
     private apiKey: string;
     private baseUrl = 'https://openrouter.ai/api/v1/chat/completions';
+    private sessionCache: Map<string, Buffer> = new Map();
 
     constructor() {
         this.apiKey = process.env.OPENROUTER_API_KEY!;
+    }
+
+    async generateProjectStream(config: any, onProgress: (data: any) => void): Promise<void> {
+        try {
+            console.log(`[ProjectGenerator] Starting streaming generation for session: ${config.sessionId}`);
+            
+            // Extract structure from plan
+            const planStructure = this.extractStructureFromPlan(config.plan);
+            const totalFiles = planStructure.files.length;
+            let completedFiles = 0;
+
+            // Generate files one by one with progress updates
+            const zip = new JSZip();
+            
+            for (const fileInfo of planStructure.files) {
+                try {
+                    console.log(`[ProjectGenerator] 🔄 Starting generation for: ${fileInfo.path}`);
+                    
+                    // Notify file generation start
+                    onProgress({
+                        type: 'file_start',
+                        filename: fileInfo.path,
+                        progress: Math.round((completedFiles / totalFiles) * 100)
+                    });
+
+                    console.log(`[ProjectGenerator] 📡 Calling AI for: ${fileInfo.path}`);
+                    
+                    // Generate file content
+                    const content = await this.generateFileFromPlan(
+                        config.projectName,
+                        config.instruction,
+                        config.plan,
+                        fileInfo,
+                        config.model || 'kwaipilot/kat-coder-pro:free'
+                    );
+
+                    console.log(`[ProjectGenerator] ✅ Generated ${content.length} chars for: ${fileInfo.path}`);
+
+                    // Clean and add to ZIP
+                    const cleanedContent = this.cleanContent(content);
+                    zip.file(fileInfo.path, cleanedContent);
+
+                    // Notify file completion
+                    onProgress({
+                        type: 'file_complete',
+                        filename: fileInfo.path,
+                        content: cleanedContent,
+                        progress: Math.round(((completedFiles + 1) / totalFiles) * 100)
+                    });
+
+                    completedFiles++;
+
+                } catch (error) {
+                    console.error(`[ProjectGenerator] Error generating ${fileInfo.path}:`, error);
+                    
+                    onProgress({
+                        type: 'error',
+                        filename: fileInfo.path,
+                        message: error instanceof Error ? error.message : 'Generation failed'
+                    });
+                }
+            }
+
+            // Create folders and generate ZIP
+            for (const folder of planStructure.folders) {
+                zip.folder(folder);
+            }
+
+            // Store ZIP in session cache
+            const zipBuffer = await zip.generateAsync({ type: 'nodebuffer' });
+            this.sessionCache.set(config.sessionId, zipBuffer);
+
+            onProgress({
+                type: 'progress',
+                progress: 100,
+                message: 'Project generation complete'
+            });
+
+        } catch (error) {
+            console.error('[ProjectGenerator] Streaming error:', error);
+            throw error;
+        }
+    }
+
+    async getProjectZip(sessionId: string): Promise<Buffer | null> {
+        console.log('[ProjectGenerator] Checking ZIP for session:', sessionId);
+        
+        const zipBuffer = this.sessionCache.get(sessionId);
+        
+        if (!zipBuffer) {
+            console.log('[ProjectGenerator] ZIP not found for session:', sessionId);
+            return null;
+        }
+
+        console.log('[ProjectGenerator] ZIP found, size:', zipBuffer.length, 'bytes');
+        
+        // Don't delete immediately - allow multiple downloads
+        // ZIP will be cleaned up after timeout or server restart
+        return zipBuffer;
     }
 
     async generateProject(
@@ -181,11 +281,14 @@ export class ProjectGenerator {
      */
     private extractStructureFromPlan(plan: string): PlanStructure {
         console.log('[ProjectGenerator] 🔍 Extracting structure from plan...');
+        console.log('[ProjectGenerator] 📄 Plan preview:', plan.substring(0, 200) + '...');
 
         const folders: string[] = [];
         const files: Array<{ path: string; type: string; description: string }> = [];
         const lines = plan.split('\n');
         const folderStack: string[] = []; // Track current folder path based on indentation
+
+        console.log('[ProjectGenerator] 📝 Total lines to process:', lines.length);
 
         for (let i = 0; i < lines.length; i++) {
             const line = lines[i];
@@ -205,6 +308,8 @@ export class ProjectGenerator {
                 const pathItem = treeMatch[1];
                 const description = treeMatch[2] || '';
 
+                console.log(`[ProjectGenerator] 🔍 Line ${i}: "${line}" → Item: "${pathItem}", Indent: ${indentLevel}`);
+
                 // Adjust folder stack based on indentation - CORRECTED LOGIC
                 folderStack.length = Math.max(0, indentLevel);
 
@@ -217,6 +322,7 @@ export class ProjectGenerator {
 
                     if (fullPath && !folders.includes(fullPath)) {
                         folders.push(fullPath);
+                        console.log(`[ProjectGenerator] 📁 Added folder: "${fullPath}"`);
                     }
 
                     // Add to stack for nested items
@@ -237,6 +343,8 @@ export class ProjectGenerator {
                             type,
                             description: description || this.generateDefaultDescription(pathItem)
                         });
+                        
+                        console.log(`[ProjectGenerator] 📄 Added file: "${fullPath}" (${type})`);
                     }
                 } else {
                     // It's a folder without trailing slash
@@ -246,6 +354,7 @@ export class ProjectGenerator {
 
                     if (fullPath && !folders.includes(fullPath)) {
                         folders.push(fullPath);
+                        console.log(`[ProjectGenerator] 📁 Added folder (no slash): "${fullPath}"`);
                     }
 
                     // Add to stack for nested items

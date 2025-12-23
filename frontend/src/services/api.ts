@@ -6,9 +6,9 @@ const getApiBaseUrl = () => {
   if (import.meta.env.PROD) {
     return '/api';
   }
-  
+
   // In development, use the full localhost URL
-  return import.meta.env.VITE_API_URL || 'http://localhost:3001/api';
+  return import.meta.env.VITE_API_URL || 'http://localhost:3002/api';
 };
 
 const API_BASE_URL = getApiBaseUrl();
