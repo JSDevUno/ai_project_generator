@@ -11,42 +11,42 @@ interface PlanDisplayProps {
 // Simple markdown-to-HTML converter for better display
 function formatMarkdownText(text: string): string {
   return text
-    // Headers
-    .replace(/^### (.*$)/gm, '<h3 class="text-lg font-semibold text-gray-900 mt-4 mb-2">$1</h3>')
-    .replace(/^## (.*$)/gm, '<h2 class="text-xl font-semibold text-gray-900 mt-6 mb-3">$1</h2>')
-    .replace(/^# (.*$)/gm, '<h1 class="text-2xl font-bold text-gray-900 mt-8 mb-4">$1</h1>')
+    // Headers with better spacing
+    .replace(/^### (.*$)/gm, '<h3 class="text-base sm:text-lg font-semibold text-gray-900 mt-6 mb-3 first:mt-0">$1</h3>')
+    .replace(/^## (.*$)/gm, '<h2 class="text-lg sm:text-xl font-semibold text-gray-900 mt-8 mb-4 first:mt-0">$1</h2>')
+    .replace(/^# (.*$)/gm, '<h1 class="text-xl sm:text-2xl font-bold text-gray-900 mt-8 mb-6 first:mt-0">$1</h1>')
     
     // Bold text
     .replace(/\*\*(.*?)\*\*/g, '<strong class="font-semibold text-gray-900">$1</strong>')
     
-    // Code blocks
+    // Code blocks with better mobile spacing
     .replace(/```[\s\S]*?```/g, (match) => {
       const code = match.replace(/```\w*\n?/g, '').replace(/```$/g, '');
-      return `<pre class="bg-gray-100 p-3 rounded-md text-sm font-mono overflow-x-auto my-3"><code>${code}</code></pre>`;
+      return `<pre class="bg-gray-100 p-3 sm:p-4 rounded-md text-xs sm:text-sm font-mono overflow-x-auto my-4 border"><code>${code}</code></pre>`;
     })
     
     // Inline code
-    .replace(/`([^`]+)`/g, '<code class="bg-gray-100 px-1 py-0.5 rounded text-sm font-mono">$1</code>')
+    .replace(/`([^`]+)`/g, '<code class="bg-gray-100 px-2 py-1 rounded text-xs sm:text-sm font-mono">$1</code>')
     
-    // Lists
-    .replace(/^- (.*$)/gm, '<li class="ml-4 mb-1">• $1</li>')
-    .replace(/^(\d+)\. (.*$)/gm, '<li class="ml-4 mb-1">$1. $2</li>')
+    // Lists with better spacing
+    .replace(/^- (.*$)/gm, '<li class="ml-4 mb-2 text-sm sm:text-base">• $1</li>')
+    .replace(/^(\d+)\. (.*$)/gm, '<li class="ml-4 mb-2 text-sm sm:text-base">$1. $2</li>')
     
     // Line breaks
-    .replace(/\n\n/g, '</p><p class="mb-3">')
+    .replace(/\n\n/g, '</p><p class="mb-4 text-sm sm:text-base leading-relaxed">')
     .replace(/\n/g, '<br/>')
     
-    // Wrap in paragraphs
-    .replace(/^(.)/gm, '<p class="mb-3">$1')
+    // Wrap in paragraphs with better spacing
+    .replace(/^(.)/gm, '<p class="mb-4 text-sm sm:text-base leading-relaxed first:mt-0">$1')
     .replace(/(.*)$/gm, '$1</p>')
     
     // Clean up extra paragraph tags
-    .replace(/<p class="mb-3"><\/p>/g, '')
-    .replace(/<p class="mb-3">(<h[1-6])/g, '$1')
+    .replace(/<p class="mb-4 text-sm sm:text-base leading-relaxed first:mt-0"><\/p>/g, '')
+    .replace(/<p class="mb-4 text-sm sm:text-base leading-relaxed first:mt-0">(<h[1-6])/g, '$1')
     .replace(/(<\/h[1-6]>)<\/p>/g, '$1')
-    .replace(/<p class="mb-3">(<pre)/g, '$1')
+    .replace(/<p class="mb-4 text-sm sm:text-base leading-relaxed first:mt-0">(<pre)/g, '$1')
     .replace(/(<\/pre>)<\/p>/g, '$1')
-    .replace(/<p class="mb-3">(<li)/g, '$1')
+    .replace(/<p class="mb-4 text-sm sm:text-base leading-relaxed first:mt-0">(<li)/g, '$1')
     .replace(/(<\/li>)<\/p>/g, '$1');
 }
 
@@ -70,16 +70,16 @@ export function PlanDisplay({ plan, onApprove, onRethink }: PlanDisplayProps) {
     <div className="max-w-6xl mx-auto">
       <div className="bg-white rounded-lg border border-gray-200 shadow-sm">
         <div className="px-6 py-4 border-b border-gray-200">
-          <div className="flex items-center justify-between">
-            <div>
-              <h2 className="text-lg font-semibold text-gray-900">
+          <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between space-y-2 sm:space-y-0">
+            <div className="flex-1 min-w-0">
+              <h2 className="text-lg font-semibold text-gray-900 truncate">
                 AI Project Plan: {plan.projectName}
               </h2>
               <p className="text-sm text-gray-600 mt-1">
                 Complete project structure and implementation plan
               </p>
             </div>
-            <div className="flex items-center space-x-2">
+            <div className="flex items-center space-x-2 flex-shrink-0">
               <span className="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium bg-blue-100 text-blue-800">
                 Plan Generated
               </span>

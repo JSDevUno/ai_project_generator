@@ -91,21 +91,21 @@ export function ProjectForm({ onSubmit }: ProjectFormProps) {
   const isValid = projectName.trim() && instruction.trim();
 
   return (
-    <div className="w-full">
-      <div className="bg-white rounded-lg p-8 shadow-lg">
-        <div className="space-y-8">
+    <div className="w-full px-4 sm:px-0">
+      <div className="bg-white rounded-lg p-4 sm:p-8 shadow-lg">
+        <div className="space-y-6 sm:space-y-8">
           <div>
-            <h2 className="text-2xl font-semibold text-gray-900 mb-2">
+            <h2 className="text-xl sm:text-2xl font-semibold text-gray-900 mb-2">
               Create AI Project
             </h2>
-            <p className="text-gray-600">
+            <p className="text-sm sm:text-base text-gray-600">
               Describe any AI project you want to build - from computer vision to NLP,
               traditional ML to deep learning. The system will generate a complete project
               structure with training scripts, inference code, and documentation.
             </p>
           </div>
 
-          <form onSubmit={handleSubmit} className="space-y-6">
+          <form onSubmit={handleSubmit} className="space-y-4 sm:space-y-6">
             {/* Project Name */}
             <div>
               <label htmlFor="projectName" className="block text-sm font-medium text-gray-700 mb-2">
@@ -116,8 +116,8 @@ export function ProjectForm({ onSubmit }: ProjectFormProps) {
                 id="projectName"
                 value={projectName}
                 onChange={(e) => setProjectName(e.target.value)}
-                placeholder="e.g., image_classifier, sentiment_analyzer, speech_recognition"
-                className="w-full px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500 transition-colors"
+                placeholder="e.g., image_classifier, sentiment_analyzer"
+                className="w-full px-3 sm:px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500 transition-colors text-base"
               />
               <p className="text-xs text-gray-500 mt-2">
                 Use lowercase with underscores (will be used for folder naming)
@@ -134,15 +134,13 @@ export function ProjectForm({ onSubmit }: ProjectFormProps) {
                 value={instruction}
                 onChange={(e) => setInstruction(e.target.value)}
                 placeholder="Describe any AI project you want to build. Examples:
-• 'Create a YOLO object detection system for traffic signs with ONNX export'
-• 'Build a BERT-based sentiment analysis pipeline with fine-tuning'
+• 'Create a YOLO object detection system for traffic signs'
+• 'Build a BERT-based sentiment analysis pipeline'
 • 'Develop a GAN for generating synthetic medical images'
 • 'Create a reinforcement learning agent for stock trading'
-• 'Build a speech recognition system using Whisper'
-• 'Develop a time series forecasting model using LSTM'
-• 'Create a recommendation system for e-commerce'"
-                rows={6}
-                className="w-full px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500 resize-vertical transition-colors"
+• 'Build a speech recognition system using Whisper'"
+                rows={5}
+                className="w-full px-3 sm:px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500 resize-vertical transition-colors text-base"
               />
               <p className="text-xs text-gray-500 mt-2">
                 Be as specific as possible about your requirements, data types, and desired outcomes
@@ -158,7 +156,7 @@ export function ProjectForm({ onSubmit }: ProjectFormProps) {
                 id="model"
                 value={model}
                 onChange={(e) => setModel(e.target.value as ModelType)}
-                className="w-full px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500 transition-colors"
+                className="w-full px-3 sm:px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500 transition-colors text-base"
               >
                 {modelOptions.map((option) => (
                   <option key={option.value} value={option.value}>
@@ -167,7 +165,7 @@ export function ProjectForm({ onSubmit }: ProjectFormProps) {
                 ))}
               </select>
               <div className="mt-2 p-3 bg-gray-50 rounded-lg">
-                <div className="text-sm text-gray-700">
+                <div className="text-xs sm:text-sm text-gray-700">
                   <strong>{modelOptions.find(opt => opt.value === model)?.label}</strong>
                 </div>
                 <div className="text-xs text-gray-600 mt-1">
@@ -185,11 +183,11 @@ export function ProjectForm({ onSubmit }: ProjectFormProps) {
             </div>
 
             {/* Submit Button */}
-            <div className="flex justify-start pt-6">
+            <div className="flex justify-start pt-4 sm:pt-6">
               <button
                 type="submit"
                 disabled={!isValid}
-                className={`px-6 py-3 text-sm font-medium rounded-lg transition-colors ${isValid
+                className={`w-full sm:w-auto px-6 py-3 text-sm font-medium rounded-lg transition-colors ${isValid
                   ? 'bg-blue-600 text-white hover:bg-blue-700 focus:ring-2 focus:ring-blue-500 focus:ring-offset-2'
                   : 'bg-gray-100 text-gray-400 cursor-not-allowed'
                   }`}

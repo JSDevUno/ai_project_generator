@@ -105,18 +105,18 @@ export function CodePreview({ files, onDownloadAll, isGenerating }: CodePreviewP
                     </div>
                 </div>
 
-                <div className="flex h-96">
+                <div className="flex flex-col sm:flex-row h-96">
                     {/* File List */}
-                    <div className="w-1/3 border-r border-gray-200 overflow-y-auto">
-                        <div className="p-4">
-                            <h3 className="text-sm font-medium text-gray-900 mb-3">Generated Files</h3>
+                    <div className="w-full sm:w-1/3 h-32 sm:h-full border-b sm:border-b-0 sm:border-r border-gray-200 overflow-y-auto">
+                        <div className="p-2 sm:p-4">
+                            <h3 className="text-xs sm:text-sm font-medium text-gray-900 mb-2 sm:mb-3">Generated Files</h3>
                             <div className="space-y-1">
                                 {files.map((file, index) => (
                                     <button
                                         key={index}
                                         onClick={() => file.status === 'complete' && setSelectedFile(file.filename)}
                                         disabled={file.status !== 'complete'}
-                                        className={`w-full text-left px-3 py-2 rounded-md text-sm transition-colors ${selectedFile === file.filename
+                                        className={`w-full text-left px-2 sm:px-3 py-1.5 sm:py-2 rounded-md text-xs sm:text-sm transition-colors ${selectedFile === file.filename
                                                 ? 'bg-blue-50 text-blue-700 border border-blue-200'
                                                 : file.status === 'complete'
                                                     ? 'hover:bg-gray-50 text-gray-700'
@@ -142,19 +142,19 @@ export function CodePreview({ files, onDownloadAll, isGenerating }: CodePreviewP
                     </div>
 
                     {/* Code Preview */}
-                    <div className="flex-1 overflow-hidden">
+                    <div className="flex-1 overflow-hidden h-64 sm:h-full">
                         {showPreview && selectedFile ? (
                             <div className="h-full flex flex-col">
-                                <div className="px-4 py-2 bg-gray-50 border-b border-gray-200">
+                                <div className="px-2 sm:px-4 py-2 bg-gray-50 border-b border-gray-200">
                                     <div className="flex items-center justify-between">
-                                        <span className="text-sm font-medium text-gray-900">{selectedFile}</span>
-                                        <span className="text-xs text-gray-500">
+                                        <span className="text-xs sm:text-sm font-medium text-gray-900 truncate">{selectedFile}</span>
+                                        <span className="text-xs text-gray-500 ml-2">
                                             {getLanguageFromFilename(selectedFile)}
                                         </span>
                                     </div>
                                 </div>
                                 <div className="flex-1 overflow-auto">
-                                    <pre className="p-4 text-sm text-gray-800 font-mono leading-relaxed">
+                                    <pre className="p-2 sm:p-4 text-xs sm:text-sm text-gray-800 font-mono leading-relaxed">
                                         <code>{files.find(f => f.filename === selectedFile)?.content || ''}</code>
                                     </pre>
                                 </div>
@@ -162,14 +162,14 @@ export function CodePreview({ files, onDownloadAll, isGenerating }: CodePreviewP
                         ) : (
                             <div className="h-full flex items-center justify-center text-gray-500">
                                 {!showPreview ? (
-                                    <div className="text-center">
-                                        <Eye className="w-8 h-8 mx-auto mb-2 text-gray-400" />
-                                        <p>Preview hidden</p>
+                                    <div className="text-center p-4">
+                                        <Eye className="w-6 h-6 sm:w-8 sm:h-8 mx-auto mb-2 text-gray-400" />
+                                        <p className="text-sm">Preview hidden</p>
                                     </div>
                                 ) : !selectedFile ? (
-                                    <div className="text-center">
-                                        <FileText className="w-8 h-8 mx-auto mb-2 text-gray-400" />
-                                        <p>Select a completed file to preview</p>
+                                    <div className="text-center p-4">
+                                        <FileText className="w-6 h-6 sm:w-8 sm:h-8 mx-auto mb-2 text-gray-400" />
+                                        <p className="text-sm">Select a completed file to preview</p>
                                     </div>
                                 ) : null}
                             </div>
