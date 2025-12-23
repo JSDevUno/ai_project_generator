@@ -20,7 +20,7 @@ const PORT = process.env.PORT || 3002;
 // Enhanced CORS for production
 app.use(cors({
   origin: process.env.NODE_ENV === 'production' 
-    ? ['https://ai-project-generator.vercel.app', 'https://your-custom-domain.com'] 
+    ? ['https://ai-project-generator-v1.vercel.app', 'https://ai-project-generator.vercel.app'] 
     : ['http://localhost:5173', 'http://localhost:3000'],
   credentials: true
 }));
@@ -39,7 +39,8 @@ app.get('/api/health', (req, res) => {
     status: 'OK', 
     timestamp: new Date().toISOString(),
     environment: process.env.NODE_ENV || 'development',
-    apiKey: process.env.OPENROUTER_API_KEY ? 'Configured' : 'Missing'
+    apiKey: process.env.OPENROUTER_API_KEY ? 'Configured' : 'Missing',
+    version: '1.0.0'
   });
 });
 

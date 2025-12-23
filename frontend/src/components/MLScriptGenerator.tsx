@@ -185,10 +185,13 @@ export function MLScriptGenerator() {
         console.log('⚙️ Project config:', projectConfig);
 
         try {
-            console.log('📡 Making request to http://localhost:3002/api/stream/generate-stream...');
+            console.log('📡 Making request to streaming API...');
 
+            // Get the correct API base URL for the environment
+            const apiBaseUrl = import.meta.env.PROD ? '/api' : 'http://localhost:3002/api';
+            
             // Call the real API to generate project files
-            const response = await fetch('http://localhost:3002/api/stream/generate-stream', {
+            const response = await fetch(`${apiBaseUrl}/stream/generate-stream`, {
                 method: 'POST',
                 headers: {
                     'Content-Type': 'application/json',
@@ -299,8 +302,11 @@ export function MLScriptGenerator() {
                 return;
             }
 
+            // Get the correct API base URL for the environment
+            const apiBaseUrl = import.meta.env.PROD ? '/api' : 'http://localhost:3002/api';
+
             // Generate and download actual ZIP file
-            const response = await fetch('http://localhost:3002/api/stream/download', {
+            const response = await fetch(`${apiBaseUrl}/stream/download`, {
                 method: 'POST',
                 headers: {
                     'Content-Type': 'application/json',
