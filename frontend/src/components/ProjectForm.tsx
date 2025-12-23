@@ -36,6 +36,12 @@ export function ProjectForm({ onSubmit }: ProjectFormProps) {
       cost: 'Free'
     },
     {
+      value: 'openai/gpt-oss-120b:free',
+      label: 'GPT-OSS 120B (Free)',
+      description: 'Massive 120B parameter model with exceptional quality, completely free!',
+      cost: 'Free'
+    },
+    {
       value: 'mistralai/mistral-7b-instruct:free',
       label: 'Mistral 7B (Free)',
       description: 'Smaller but efficient instruction-tuned model',
