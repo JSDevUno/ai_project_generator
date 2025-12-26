@@ -13,12 +13,32 @@ export interface ProjectConfig {
     projectName: string;
     instruction: string;
     model?: ModelType;
+    enableGitHubSearch?: boolean;
+}
+
+export interface Repository {
+    name: string;
+    fullName: string;
+    description: string;
+    url: string;
+    stars: number;
+    forks: number;
+    language: string;
+    topics: string[];
+    keyFeatures: string[];
+    architecture: string;
+    techStack: string[];
+    relevanceScore: number;
+    rank: number;
+    reasoning: string;
 }
 
 export interface GeneratedPlan {
     content: string;
     projectName: string;
     instruction: string;
+    repositories?: Repository[];
+    searchEnabled?: boolean;
 }
 
 export function MLScriptGenerator() {
@@ -26,12 +46,13 @@ export function MLScriptGenerator() {
     const [projectConfig, setProjectConfig] = useState<ProjectConfig>({
         projectName: '',
         instruction: '',
-        model: 'kwaipilot/kat-coder-pro:free'
+        model: 'kwaipilot/kat-coder-pro:free',
+        enableGitHubSearch: false
     });
     const [generatedPlan, setGeneratedPlan] = useState<GeneratedPlan | null>(null);
     const [previewFiles, setPreviewFiles] = useState<PreviewFile[]>([]);
     const [isLoading, setIsLoading] = useState(false);
-    const [loadingStage, setLoadingStage] = useState<'plan' | 'project'>('plan');
+    const [loadingStage, setLoadingStage] = useState<'plan' | 'github-search' | 'github-analysis' | 'project'>('plan');
     const [loadingProgress, setLoadingProgress] = useState(0);
     const [error, setError] = useState<string | null>(null);
     const [progressSessionId, setProgressSessionId] = useState<string>('');
@@ -42,13 +63,20 @@ export function MLScriptGenerator() {
         setLoadingStage('plan');
         setLoadingProgress(0);
 
-        // Simple progress animation to show activity
+        // Enhanced progress animation for GitHub search
         const progressInterval = setInterval(() => {
             setLoadingProgress(prev => {
                 const newProgress = prev + Math.random() * 8 + 3;
                 return Math.min(95, newProgress); // Cap at 95%
             });
         }, 500);
+
+        // Update loading stage if GitHub search is enabled
+        if (config.enableGitHubSearch) {
+            setTimeout(() => setLoadingStage('github-search'), 1000);
+            setTimeout(() => setLoadingStage('github-analysis'), 3000);
+            setTimeout(() => setLoadingStage('plan'), 5000);
+        }
 
         try {
             console.log('Calling API with config:', config);
@@ -83,13 +111,20 @@ export function MLScriptGenerator() {
         setLoadingStage('plan');
         setLoadingProgress(0);
 
-        // Simple progress animation to show activity
+        // Enhanced progress animation for GitHub search
         const progressInterval = setInterval(() => {
             setLoadingProgress(prev => {
                 const newProgress = prev + Math.random() * 8 + 3;
                 return Math.min(95, newProgress); // Cap at 95%
             });
         }, 500);
+
+        // Update loading stage if GitHub search is enabled
+        if (projectConfig.enableGitHubSearch) {
+            setTimeout(() => setLoadingStage('github-search'), 1000);
+            setTimeout(() => setLoadingStage('github-analysis'), 3000);
+            setTimeout(() => setLoadingStage('plan'), 5000);
+        }
 
         try {
             console.log('Rethinking plan with feedback:', feedback);
@@ -160,6 +195,7 @@ export function MLScriptGenerator() {
                 status: 'pending'
             }));
 
+            console.log('📋 Initialized preview files:', initialPreviewFiles.map(f => f.filename));
             setPreviewFiles(initialPreviewFiles);
             setWorkflowState('preview');
 
@@ -185,11 +221,19 @@ export function MLScriptGenerator() {
         console.log('⚙️ Project config:', projectConfig);
 
         try {
-            console.log('📡 Making request to streaming API...');
-
             // Get the correct API base URL for the environment
             const apiBaseUrl = import.meta.env.PROD ? '/api' : 'http://localhost:3002/api';
-            
+
+            console.log('📡 Making request to streaming API...');
+            console.log('📡 Request URL:', `${apiBaseUrl}/stream/generate-stream`);
+            console.log('📡 Request body:', {
+                projectName: projectConfig.projectName,
+                instruction: projectConfig.instruction,
+                plan: plan.substring(0, 100) + '...',
+                model: projectConfig.model,
+                sessionId: sessionId
+            });
+
             // Call the real API to generate project files
             const response = await fetch(`${apiBaseUrl}/stream/generate-stream`, {
                 method: 'POST',
@@ -225,27 +269,59 @@ export function MLScriptGenerator() {
             }
 
             let buffer = '';
+            let lastActivity = Date.now();
+            const TIMEOUT_MS = 5000; // 5 second timeout
+
+            // Set up a timeout to detect if streaming stops
+            const timeoutCheck = setInterval(() => {
+                const now = Date.now();
+                if (now - lastActivity > TIMEOUT_MS) {
+                    console.warn('⚠️ Streaming timeout detected, no data received for 5 seconds');
+                    clearInterval(timeoutCheck);
+                }
+            }, 1000);
 
             while (true) {
                 const { done, value } = await reader.read();
 
                 if (done) {
                     console.log('✅ Streaming completed');
+                    clearInterval(timeoutCheck);
                     break;
                 }
 
-                buffer += decoder.decode(value, { stream: true });
+                lastActivity = Date.now();
+                const chunk = decoder.decode(value, { stream: true });
+                console.log('📦 Received chunk:', chunk);
+
+                buffer += chunk;
                 const lines = buffer.split('\n');
                 buffer = lines.pop() || '';
 
+                console.log('📝 Processing lines:', lines);
+
                 for (const line of lines) {
+                    console.log('📄 Processing line:', line);
                     if (line.trim() && line.startsWith('data: ')) {
                         try {
-                            const data = JSON.parse(line.slice(6));
-                            handleStreamUpdate(data);
+                            const jsonData = line.slice(6);
+                            console.log('🔍 Parsing JSON:', jsonData);
+                            const data = JSON.parse(jsonData);
+                            console.log('📨 Received stream data:', data);
+
+                            // Handle different message types
+                            if (data.type === 'heartbeat') {
+                                console.log('💓 Heartbeat received');
+                            } else if (data.type === 'connected') {
+                                console.log('🔗 Stream connected');
+                            } else {
+                                handleStreamUpdate(data);
+                            }
                         } catch (e) {
-                            console.warn('Failed to parse stream data:', line);
+                            console.warn('Failed to parse stream data:', line, 'Error:', e);
                         }
+                    } else if (line.trim()) {
+                        console.log('📨 Received non-data line:', line);
                     }
                 }
             }
@@ -260,35 +336,59 @@ export function MLScriptGenerator() {
     };
 
     const handleStreamUpdate = (data: any) => {
+        console.log('🔄 Processing stream update:', data);
+
         if (data.type === 'file_start') {
+            console.log('📄 File generation started:', data.filename);
+            console.log('📋 Current preview files:', previewFiles.map(f => f.filename));
+
             // File generation started
-            setPreviewFiles(prev => prev.map(f =>
-                f.filename === data.filename
-                    ? { ...f, status: 'generating' }
-                    : f
-            ));
-        } else if (data.type === 'file_complete') {
-            // File generation completed
-            setPreviewFiles(prev => prev.map(f =>
-                f.filename === data.filename
-                    ? {
-                        ...f,
-                        content: data.content,
-                        status: 'complete',
-                        size: data.content.length
+            setPreviewFiles(prev => {
+                const updated = prev.map(f => {
+                    if (f.filename === data.filename) {
+                        console.log('✅ Found matching file, setting to generating:', f.filename);
+                        return { ...f, status: 'generating' as const };
                     }
-                    : f
-            ));
+                    return f;
+                });
+                console.log('📋 Updated preview files:', updated.map(f => `${f.filename}: ${f.status}`));
+                return updated;
+            });
+        } else if (data.type === 'file_complete') {
+            console.log('✅ File generation completed:', data.filename);
+            console.log('📄 File content length:', data.content?.length || 0);
+
+            // File generation completed
+            setPreviewFiles(prev => {
+                const updated = prev.map(f => {
+                    if (f.filename === data.filename) {
+                        console.log('✅ Found matching file, setting to complete:', f.filename);
+                        return {
+                            ...f,
+                            content: data.content,
+                            status: 'complete' as const,
+                            size: data.content?.length || 0
+                        };
+                    }
+                    return f;
+                });
+                console.log('📋 Updated preview files:', updated.map(f => `${f.filename}: ${f.status}`));
+                return updated;
+            });
         } else if (data.type === 'progress') {
+            console.log('📊 Progress update:', data.progress);
             // Update overall progress
             setLoadingProgress(data.progress);
         } else if (data.type === 'error') {
+            console.error('❌ Stream error:', data);
             // Handle file generation error
             setPreviewFiles(prev => prev.map(f =>
                 f.filename === data.filename
-                    ? { ...f, status: 'error' }
+                    ? { ...f, status: 'error' as const }
                     : f
             ));
+        } else {
+            console.log('📨 Unknown stream update type:', data.type, data);
         }
     };
 
@@ -355,7 +455,8 @@ export function MLScriptGenerator() {
         setProjectConfig({
             projectName: '',
             instruction: '',
-            model: 'kwaipilot/kat-coder-pro:free'
+            model: 'kwaipilot/kat-coder-pro:free',
+            enableGitHubSearch: false
         });
         setGeneratedPlan(null);
         setPreviewFiles([]);
@@ -490,20 +591,25 @@ function extractExpectedFiles(plan: string): string[] {
     const lines = plan.split('\n');
 
     for (const line of lines) {
-        // Match tree structure patterns like "├── filename.ext" or "└── filename.ext"
-        const treeMatch = line.match(/^[\s│├└─]*([a-zA-Z0-9_.-]+\.[a-zA-Z0-9]+)(?:\s*#.*)?$/);
+        // Match tree structure patterns like "├── path/filename.ext" or "└── filename.ext"
+        const treeMatch = line.match(/^[\s│├└─]*([a-zA-Z0-9_./\-]+\.[a-zA-Z0-9]+)(?:\s*#.*)?$/);
         if (treeMatch) {
-            const filename = treeMatch[1].trim();
-            if (filename && filename.includes('.')) {
-                files.add(filename);
+            let filePath = treeMatch[1].trim();
+            // Clean the file path: remove comments, leading slashes, extra whitespace
+            filePath = filePath.split('#')[0].trim().replace(/^\/+/, '');
+            if (filePath && filePath.includes('.')) {
+                files.add(filePath);
             }
         }
 
-        // Match files mentioned in text like "train.py" or "`train.py`"
-        const fileMatches = line.match(/`?([a-zA-Z0-9_-]+\.(py|js|ts|json|md|txt|yml|yaml|dockerfile|sh))`?/g);
-        if (fileMatches) {
+        // Match files mentioned in text like "src/train.py" or "`path/file.py`"
+        // But only if they're not already captured by tree structure
+        const fileMatches = line.match(/`?([a-zA-Z0-9_./\-]+\.(py|js|ts|json|md|txt|yml|yaml|dockerfile|sh))`?/g);
+        if (fileMatches && !line.match(/^[\s│├└─]/)) { // Only if not a tree structure line
             fileMatches.forEach(match => {
-                const cleanFile = match.replace(/[`]/g, '').trim();
+                let cleanFile = match.replace(/[`]/g, '').trim();
+                // Clean the file path: remove comments, leading slashes
+                cleanFile = cleanFile.split('#')[0].trim().replace(/^\/+/, '');
                 if (cleanFile && cleanFile.includes('.')) {
                     files.add(cleanFile);
                 }
@@ -511,10 +617,23 @@ function extractExpectedFiles(plan: string): string[] {
         }
     }
 
+    // Remove duplicates where we have both "file.py" and "path/file.py"
     const extractedFiles = Array.from(files);
-    console.log('📄 Frontend extracted files from plan:', extractedFiles);
+    const deduplicatedFiles = extractedFiles.filter(file => {
+        const filename = file.split('/').pop();
+        // Keep the file if there's no other file with the same name but different path
+        const duplicates = extractedFiles.filter(f => f.split('/').pop() === filename);
+        if (duplicates.length > 1) {
+            // If there are duplicates, prefer the one with a path (more specific)
+            return file.includes('/') || duplicates.every(d => !d.includes('/'));
+        }
+        return true;
+    });
 
-    return extractedFiles;
+    console.log('📄 Frontend extracted files from plan:', deduplicatedFiles);
+    console.log('📄 Removed duplicates:', extractedFiles.length - deduplicatedFiles.length);
+
+    return deduplicatedFiles;
 }
 
 function getLanguageFromFilename(filename: string): string {

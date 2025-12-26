@@ -37,6 +37,8 @@ class ApiService {
       plan: string;
       projectName: string;
       instruction: string;
+      repositories?: any[];
+      searchEnabled?: boolean;
     }>('/plan/generate', {
       method: 'POST',
       body: JSON.stringify(config),
@@ -46,6 +48,8 @@ class ApiService {
       content: response.plan,
       projectName: response.projectName,
       instruction: response.instruction,
+      repositories: response.repositories || [],
+      searchEnabled: response.searchEnabled || false,
     };
   }
 
@@ -55,6 +59,8 @@ class ApiService {
       plan: string;
       projectName: string;
       instruction: string;
+      repositories?: any[];
+      searchEnabled?: boolean;
     }>('/plan/rethink', {
       method: 'POST',
       body: JSON.stringify({ ...config, feedback }),
@@ -64,6 +70,8 @@ class ApiService {
       content: response.plan,
       projectName: response.projectName,
       instruction: response.instruction,
+      repositories: response.repositories || [],
+      searchEnabled: response.searchEnabled || false,
     };
   }
 
@@ -124,6 +132,22 @@ class ApiService {
     a.click();
     document.body.removeChild(a);
     window.URL.revokeObjectURL(url);
+  }
+
+  async getGitHubRateLimit(): Promise<{
+    search: { limit: number; remaining: number; reset: string; resetIn: number };
+    core: { limit: number; remaining: number; reset: string; resetIn: number };
+  }> {
+    const response = await this.request<{
+      success: boolean;
+      search: { limit: number; remaining: number; reset: string; resetIn: number };
+      core: { limit: number; remaining: number; reset: string; resetIn: number };
+    }>('/github/rate-limit');
+
+    return {
+      search: response.search,
+      core: response.core
+    };
   }
 }
 

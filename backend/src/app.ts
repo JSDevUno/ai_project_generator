@@ -10,6 +10,7 @@ dotenv.config();
 import { planRouter } from './routes/plan.js';
 import { codeRouter } from './routes/code.js';
 import { streamRouter } from './routes/stream.js';
+import { githubRouter } from './routes/github.js';
 
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = path.dirname(__filename);
@@ -21,7 +22,7 @@ const PORT = process.env.PORT || 3002;
 app.use(cors({
   origin: process.env.NODE_ENV === 'production' 
     ? ['https://ai-project-generator-v1.vercel.app', 'https://ai-project-generator.vercel.app'] 
-    : ['http://localhost:5173', 'http://localhost:3000'],
+    : ['http://localhost:5173', 'http://localhost:5174', 'http://localhost:3000'],
   credentials: true
 }));
 
@@ -32,6 +33,7 @@ app.use(express.urlencoded({ extended: true, limit: '50mb' }));
 app.use('/api/plan', planRouter);
 app.use('/api/code', codeRouter);
 app.use('/api/stream', streamRouter);
+app.use('/api/github', githubRouter);
 
 // Health check endpoint
 app.get('/api/health', (req, res) => {
@@ -40,6 +42,7 @@ app.get('/api/health', (req, res) => {
     timestamp: new Date().toISOString(),
     environment: process.env.NODE_ENV || 'development',
     apiKey: process.env.OPENROUTER_API_KEY ? 'Configured' : 'Missing',
+    githubKey: process.env.GITHUB_API_KEY ? 'Configured' : 'Missing',
     version: '1.0.0'
   });
 });

@@ -35,28 +35,45 @@ export class ProjectGenerator {
     async generateProjectStream(config: any, onProgress: (data: any) => void): Promise<void> {
         try {
             console.log(`[ProjectGenerator] Starting streaming generation for session: ${config.sessionId}`);
-            
+
             // Extract structure from plan
             const planStructure = this.extractStructureFromPlan(config.plan);
-            const totalFiles = planStructure.files.length;
+            // Filter out user-provided files that shouldn't be generated
+            const generatableFiles = planStructure.files.filter(file => this.shouldGenerateFile(file.path));
+            const skippedFiles = planStructure.files.filter(file => !this.shouldGenerateFile(file.path));
+
+            console.log(`[ProjectGenerator] 📊 Total files in plan: ${planStructure.files.length}`);
+            console.log(`[ProjectGenerator] ✅ Files to generate: ${generatableFiles.length}`);
+            console.log(`[ProjectGenerator] ⏭️  Files to skip (user-provided): ${skippedFiles.length}`);
+
+            if (skippedFiles.length > 0) {
+                console.log(`[ProjectGenerator] 📋 Skipped files: ${skippedFiles.map(f => f.path).join(', ')}`);
+            }
+
+            const totalFiles = generatableFiles.length;
             let completedFiles = 0;
 
             // Generate files one by one with progress updates
             const zip = new JSZip();
-            
-            for (const fileInfo of planStructure.files) {
+
+            for (const fileInfo of generatableFiles) {
                 try {
                     console.log(`[ProjectGenerator] 🔄 Starting generation for: ${fileInfo.path}`);
-                    
+
+                    // Clean filename for progress updates (remove comments and extra whitespace)
+                    const cleanFilename = fileInfo.path.split('#')[0].trim().replace(/^\/+/, '');
+                    console.log(`[ProjectGenerator] 🧹 Cleaned filename: "${fileInfo.path}" → "${cleanFilename}"`);
+
                     // Notify file generation start
+                    console.log(`[ProjectGenerator] 📤 Sending file_start progress for: ${cleanFilename}`);
                     onProgress({
                         type: 'file_start',
-                        filename: fileInfo.path,
+                        filename: cleanFilename,
                         progress: Math.round((completedFiles / totalFiles) * 100)
                     });
 
                     console.log(`[ProjectGenerator] 📡 Calling AI for: ${fileInfo.path}`);
-                    
+
                     // Generate file content
                     const content = await this.generateFileFromPlan(
                         config.projectName,
@@ -68,14 +85,16 @@ export class ProjectGenerator {
 
                     console.log(`[ProjectGenerator] ✅ Generated ${content.length} chars for: ${fileInfo.path}`);
 
-                    // Clean and add to ZIP
+                    // Clean and add to ZIP with proper project structure
                     const cleanedContent = this.cleanContent(content);
-                    zip.file(fileInfo.path, cleanedContent);
+                    // Note: Files will be organized into project folder after all generation is complete
+                    zip.file(cleanFilename, cleanedContent); // Temporary storage, will be reorganized later
 
                     // Notify file completion
+                    console.log(`[ProjectGenerator] 📤 Sending file_complete progress for: ${cleanFilename}`);
                     onProgress({
                         type: 'file_complete',
-                        filename: fileInfo.path,
+                        filename: cleanFilename,
                         content: cleanedContent,
                         progress: Math.round(((completedFiles + 1) / totalFiles) * 100)
                     });
@@ -84,24 +103,66 @@ export class ProjectGenerator {
 
                 } catch (error) {
                     console.error(`[ProjectGenerator] Error generating ${fileInfo.path}:`, error);
-                    
+
+                    // Clean filename for error progress too
+                    const cleanFilename = fileInfo.path.split('#')[0].trim().replace(/^\/+/, '');
+
                     onProgress({
                         type: 'error',
-                        filename: fileInfo.path,
+                        filename: cleanFilename,
                         message: error instanceof Error ? error.message : 'Generation failed'
                     });
                 }
             }
 
-            // Create folders and generate ZIP
-            for (const folder of planStructure.folders) {
-                zip.folder(folder);
+            // Create folders and generate ZIP with proper project structure
+            console.log(`[ProjectGenerator] 📦 Creating ZIP with project folder: ${config.projectName}`);
+
+            // Create a new ZIP with proper project structure
+            const finalZip = new JSZip();
+            const projectFolder = finalZip.folder(config.projectName);
+            if (!projectFolder) {
+                throw new Error(`Failed to create project folder: ${config.projectName}`);
             }
 
-            // Store ZIP in session cache
-            const zipBuffer = await zip.generateAsync({ type: 'nodebuffer' });
+            // Create all subfolders inside the project folder
+            for (const folder of planStructure.folders) {
+                // Skip the root project folder if it's already in the list
+                if (folder === config.projectName) {
+                    continue;
+                }
+
+                // Remove project name prefix if it exists to avoid duplication
+                const cleanFolderPath = folder.startsWith(config.projectName + '/')
+                    ? folder.substring(config.projectName.length + 1)
+                    : folder;
+
+                if (cleanFolderPath) {
+                    projectFolder.folder(cleanFolderPath);
+                    console.log(`[ProjectGenerator] 📁 Created folder: ${config.projectName}/${cleanFolderPath}`);
+                }
+            }
+
+            // Move all files from temporary zip to project folder synchronously
+            const filePromises: Promise<void>[] = [];
+            zip.forEach((relativePath, file) => {
+                if (!file.dir) { // Only process files, not directories
+                    const promise = file.async('string').then((fileContent) => {
+                        projectFolder.file(relativePath, fileContent);
+                        console.log(`[ProjectGenerator] 📄 Added file: ${config.projectName}/${relativePath}`);
+                    });
+                    filePromises.push(promise);
+                }
+            });
+
+            // Wait for all files to be processed
+            await Promise.all(filePromises);
+
+            // Store final ZIP in session cache
+            const zipBuffer = await finalZip.generateAsync({ type: 'nodebuffer' });
             this.sessionCache.set(config.sessionId, zipBuffer);
 
+            console.log(`[ProjectGenerator] 📤 Sending final progress update`);
             onProgress({
                 type: 'progress',
                 progress: 100,
@@ -116,16 +177,16 @@ export class ProjectGenerator {
 
     async getProjectZip(sessionId: string): Promise<Buffer | null> {
         console.log('[ProjectGenerator] Checking ZIP for session:', sessionId);
-        
+
         const zipBuffer = this.sessionCache.get(sessionId);
-        
+
         if (!zipBuffer) {
             console.log('[ProjectGenerator] ZIP not found for session:', sessionId);
             return null;
         }
 
         console.log('[ProjectGenerator] ZIP found, size:', zipBuffer.length, 'bytes');
-        
+
         // Don't delete immediately - allow multiple downloads
         // ZIP will be cleaned up after timeout or server restart
         return zipBuffer;
@@ -156,15 +217,26 @@ export class ProjectGenerator {
             progress: 0
         });
 
-        // Step 2: Generate all files following the plan exactly
+        // Step 2: Filter and generate files following the plan exactly
+        const generatableFiles = planStructure.files.filter(file => this.shouldGenerateFile(file.path));
+        const skippedFiles = planStructure.files.filter(file => !this.shouldGenerateFile(file.path));
+
+        console.log(`[ProjectGenerator] 📊 Total files in plan: ${planStructure.files.length}`);
+        console.log(`[ProjectGenerator] ✅ Files to generate: ${generatableFiles.length}`);
+        console.log(`[ProjectGenerator] ⏭️  Files to skip (user-provided): ${skippedFiles.length}`);
+
+        if (skippedFiles.length > 0) {
+            console.log(`[ProjectGenerator] 📋 Skipped files: ${skippedFiles.map(f => f.path).join(', ')}`);
+        }
+
         const files: ProjectFile[] = [];
-        const totalFiles = planStructure.files.length;
+        const totalFiles = generatableFiles.length;
 
         console.log(`\n🚀 [ProjectGenerator] Starting AI/ML Project Generation`);
         console.log(`📊 [ProjectGenerator] Progress: 0/${totalFiles} files (0%)`);
 
-        for (let i = 0; i < planStructure.files.length; i++) {
-            const fileInfo = planStructure.files[i];
+        for (let i = 0; i < generatableFiles.length; i++) {
+            const fileInfo = generatableFiles[i];
             const progress = Math.round(((i + 1) / totalFiles) * 100);
 
             // Send progress update to frontend
@@ -184,47 +256,82 @@ export class ProjectGenerator {
             console.log(`\n📄 [${i + 1}/${totalFiles}] Generating: ${fileInfo.path}`);
             console.log(`🔧 Type: ${fileInfo.type} | 📝 ${fileInfo.description}`);
 
-            const startTime = Date.now();
-            const content = await this.generateFileFromPlan(projectName, instruction, plan, fileInfo, selectedModel);
-            const endTime = Date.now();
-            const duration = endTime - startTime;
+            try {
+                const startTime = Date.now();
+                const content = await this.generateFileFromPlan(projectName, instruction, plan, fileInfo, selectedModel);
+                const endTime = Date.now();
+                const duration = endTime - startTime;
 
-            // Clean content
-            const cleanedContent = this.cleanContent(content);
-            const fileSize = Math.round(cleanedContent.length / 1024 * 100) / 100;
+                // Clean content
+                const cleanedContent = this.cleanContent(content);
+                const fileSize = Math.round(cleanedContent.length / 1024 * 100) / 100;
 
-            files.push({
-                path: fileInfo.path,
-                content: cleanedContent,
-                type: this.mapFileType(fileInfo.type)
-            });
-
-            // Send file completion update
-            progressCallback?.({
-                type: 'file_complete',
-                message: `Generated ${fileInfo.path}`,
-                currentFile: i + 1,
-                totalFiles,
-                progress,
-                fileInfo: {
+                files.push({
                     path: fileInfo.path,
-                    type: fileInfo.type,
-                    size: `${fileSize}KB`,
-                    duration: `${duration}ms`
-                },
-                nextFile: i < planStructure.files.length - 1 ? {
-                    path: planStructure.files[i + 1].path,
-                    type: planStructure.files[i + 1].type
-                } : null
-            });
+                    content: cleanedContent,
+                    type: this.mapFileType(fileInfo.type)
+                });
 
-            console.log(`✅ Generated ${fileInfo.path} (${fileSize}KB) in ${duration}ms`);
+                // Send file completion update
+                progressCallback?.({
+                    type: 'file_complete',
+                    message: `Generated ${fileInfo.path}`,
+                    currentFile: i + 1,
+                    totalFiles,
+                    progress,
+                    fileInfo: {
+                        path: fileInfo.path,
+                        type: fileInfo.type,
+                        size: `${fileSize}KB`,
+                        duration: `${duration}ms`
+                    },
+                    nextFile: i < planStructure.files.length - 1 ? {
+                        path: planStructure.files[i + 1].path,
+                        type: planStructure.files[i + 1].type
+                    } : null
+                });
+
+                console.log(`✅ Generated ${fileInfo.path} (${fileSize}KB) in ${duration}ms`);
+
+            } catch (error) {
+                console.error(`❌ Failed to generate ${fileInfo.path}:`, error);
+
+                // Create a placeholder file so the project structure is maintained
+                const placeholderContent = `# ${fileInfo.path}\n# Generation failed: ${error instanceof Error ? error.message : 'Unknown error'}\n# Please regenerate this file manually\n`;
+
+                files.push({
+                    path: fileInfo.path,
+                    content: placeholderContent,
+                    type: this.mapFileType(fileInfo.type)
+                });
+
+                // Send error notification but continue
+                progressCallback?.({
+                    type: 'file_error',
+                    message: `Failed to generate ${fileInfo.path}`,
+                    currentFile: i + 1,
+                    totalFiles,
+                    progress,
+                    error: error instanceof Error ? error.message : 'Unknown error'
+                });
+            }
 
             // Show current status
-            if (i < planStructure.files.length - 1) {
-                const nextFile = planStructure.files[i + 1];
+            if (i < generatableFiles.length - 1) {
+                const nextFile = generatableFiles[i + 1];
                 console.log(`⏭️  Next: ${nextFile.path} (${nextFile.type})`);
             }
+        }
+
+        // Add placeholder files for skipped user-provided files
+        for (const skippedFile of skippedFiles) {
+            const placeholderContent = this.createPlaceholderContent(skippedFile.path);
+            files.push({
+                path: skippedFile.path,
+                content: placeholderContent,
+                type: this.mapFileType(skippedFile.type)
+            });
+            console.log(`📝 Added placeholder for user-provided file: ${skippedFile.path}`);
         }
 
         // Send validation progress
@@ -286,7 +393,7 @@ export class ProjectGenerator {
         const folders: string[] = [];
         const files: Array<{ path: string; type: string; description: string }> = [];
         const lines = plan.split('\n');
-        const folderStack: string[] = []; // Track current folder path based on indentation
+        const folderStack: string[] = []; // Track current folder path
 
         console.log('[ProjectGenerator] 📝 Total lines to process:', lines.length);
 
@@ -295,46 +402,30 @@ export class ProjectGenerator {
             const trimmed = line.trim();
 
             // Skip empty lines and headers
-            if (!trimmed || trimmed.startsWith('#') || trimmed.startsWith('=')) {
+            if (!trimmed || trimmed.startsWith('#') || trimmed.startsWith('=') ||
+                trimmed.includes('Project Structure') || trimmed.includes('Overview')) {
                 continue;
             }
 
-            // Calculate indentation level by counting tree structure depth
-            // Count the depth based on tree characters and spaces
-            let indentLevel = 0;
-            let pos = 0;
-            
-            // Skip initial spaces
-            while (pos < line.length && line[pos] === ' ') {
-                pos++;
-            }
-            
-            // Count tree structure levels
-            while (pos < line.length) {
-                const char = line[pos];
-                if (char === '│' || char === '├' || char === '└' || char === '─') {
-                    if (char === '├' || char === '└') {
-                        indentLevel++;
-                        break; // This is the actual item
-                    }
-                    pos++;
-                } else if (char === ' ') {
-                    pos++;
-                } else {
-                    break;
-                }
-            }
-
-            // Parse tree structure format with flexible matching
-            const treeMatch = line.match(/^[\s│├└─]*([a-zA-Z0-9_.-]+(?:\/[a-zA-Z0-9_.-]*)*\/?)(?:\s*#\s*(.*))?$/);
+            // FIXED: Better indentation calculation using tree structure
+            const treeMatch = line.match(/^(\s*)((?:[│├└]\s*)*)(├|└)\s*─*\s*(.+)$/);
             if (treeMatch) {
-                const pathItem = treeMatch[1];
-                const description = treeMatch[2] || '';
+                const pathItem = treeMatch[4].trim(); // the actual file/folder name
 
-                console.log(`[ProjectGenerator] 🔍 Line ${i}: "${line}" → Item: "${pathItem}", Indent: ${indentLevel}`);
+                // FIXED: Calculate depth by finding where the actual content starts
+                const contentMatch = line.match(/^[│├└\s─]*([a-zA-Z0-9_])/);
+                let indentLevel = 0;
+                
+                if (contentMatch) {
+                    const contentStart = line.indexOf(contentMatch[1]);
+                    // Each level of nesting adds approximately 4 characters
+                    indentLevel = Math.max(0, Math.floor(contentStart / 4) - 1);
+                }
 
-                // Adjust folder stack based on indentation - CORRECTED LOGIC
-                folderStack.length = Math.max(0, indentLevel - 1);
+                console.log(`[ProjectGenerator] 🔍 Line ${i}: "${line.trim()}" → Item: "${pathItem}", Depth: ${indentLevel}, ContentStart: ${contentMatch ? line.indexOf(contentMatch[1]) : 'N/A'}`);
+
+                // FIXED: Adjust folder stack to match current depth
+                folderStack.length = indentLevel;
 
                 if (pathItem.endsWith('/')) {
                     // It's a folder
@@ -345,10 +436,10 @@ export class ProjectGenerator {
 
                     if (fullPath && !folders.includes(fullPath)) {
                         folders.push(fullPath);
-                        console.log(`[ProjectGenerator] 📁 Added folder: "${fullPath}"`);
+                        console.log(`[ProjectGenerator] 📁 Added folder: "${fullPath}" (depth: ${indentLevel})`);
                     }
 
-                    // Add to stack for nested items
+                    // FIXED: Add to stack for nested items
                     folderStack.push(folderName);
 
                 } else if (pathItem.includes('.')) {
@@ -364,29 +455,29 @@ export class ProjectGenerator {
                         files.push({
                             path: fullPath,
                             type,
-                            description: description || this.generateDefaultDescription(pathItem)
+                            description: this.generateDefaultDescription(pathItem)
                         });
-                        
-                        console.log(`[ProjectGenerator] 📄 Added file: "${fullPath}" (${type})`);
-                    }
-                } else {
-                    // It's a folder without trailing slash
-                    const fullPath = folderStack.length > 0 ?
-                        folderStack.join('/') + '/' + pathItem :
-                        pathItem;
 
-                    if (fullPath && !folders.includes(fullPath)) {
-                        folders.push(fullPath);
-                        console.log(`[ProjectGenerator] 📁 Added folder (no slash): "${fullPath}"`);
+                        console.log(`[ProjectGenerator] 📄 Added file: "${fullPath}" (depth: ${indentLevel})`);
                     }
-
-                    // Add to stack for nested items
-                    folderStack.push(pathItem);
+                }
+            } else {
+                // Handle root level items (like "rapid/")
+                const rootMatch = line.match(/^([a-zA-Z0-9_.-]+\/?)$/);
+                if (rootMatch) {
+                    const pathItem = rootMatch[1];
+                    if (pathItem.endsWith('/')) {
+                        const folderName = pathItem.replace(/\/$/, '');
+                        if (!folders.includes(folderName)) {
+                            folders.push(folderName);
+                            console.log(`[ProjectGenerator] 📁 Added root folder: "${folderName}"`);
+                        }
+                    }
                 }
             }
         }
 
-        // Add parent folders from file paths (backup mechanism)
+        // FIXED: Ensure parent folders exist for all nested files
         files.forEach(file => {
             const pathParts = file.path.split('/');
             if (pathParts.length > 1) {
@@ -394,6 +485,7 @@ export class ProjectGenerator {
                     const folderPath = pathParts.slice(0, i).join('/');
                     if (folderPath && !folders.includes(folderPath)) {
                         folders.push(folderPath);
+                        console.log(`[ProjectGenerator] 📁 Added missing parent folder: "${folderPath}"`);
                     }
                 }
             }
@@ -493,27 +585,50 @@ CRITICAL: This is an AI/ML project generator. Every file must be optimized for m
 
 Generate the complete ${fileInfo.type} file content for this AI/ML project:`;
 
-        const response = await fetch(this.baseUrl, {
-            method: 'POST',
-            headers: {
-                'Authorization': `Bearer ${this.apiKey}`,
-                'Content-Type': 'application/json',
-                'HTTP-Referer': 'https://ai-project-generator.local',
-                'X-Title': 'Universal AI Project Generator',
-            },
-            body: JSON.stringify({
-                model,
-                messages: [{ role: 'user', content: prompt }],
-                stream: false,
-            }),
-        });
+        const controller = new AbortController();
+        const timeoutId = setTimeout(() => {
+            console.log(`[ProjectGenerator] Request timeout for ${fileInfo.path} after 60 seconds`);
+            controller.abort();
+        }, 60000); // 60 second timeout
 
-        if (!response.ok) {
-            throw new Error(`OpenRouter API error: ${response.status} ${response.statusText}`);
+        try {
+            const response = await fetch(this.baseUrl, {
+                method: 'POST',
+                headers: {
+                    'Authorization': `Bearer ${this.apiKey}`,
+                    'Content-Type': 'application/json',
+                    'HTTP-Referer': 'https://ai-project-generator.local',
+                    'X-Title': 'Universal AI Project Generator',
+                },
+                body: JSON.stringify({
+                    model,
+                    messages: [{ role: 'user', content: prompt }],
+                    stream: false,
+                }),
+                signal: controller.signal,
+            });
+
+            clearTimeout(timeoutId);
+
+            if (!response.ok) {
+                throw new Error(`OpenRouter API error: ${response.status} ${response.statusText}`);
+            }
+
+            const data = await response.json();
+            return data.choices[0].message.content || '';
+        } catch (error) {
+            clearTimeout(timeoutId);
+
+            if (error instanceof Error) {
+                if (error.name === 'AbortError') {
+                    throw new Error(`Request timeout for ${fileInfo.path} - please try again`);
+                }
+                if (error.message.includes('terminated')) {
+                    throw new Error(`Connection lost for ${fileInfo.path} - please check your internet connection`);
+                }
+            }
+            throw error;
         }
-
-        const data = await response.json();
-        return data.choices[0].message.content || '';
     }
 
     /**
@@ -622,17 +737,163 @@ Generate the complete ${fileInfo.type} file content for this AI/ML project:`;
         return typeMap[type] || 'text';
     }
 
+    /**
+     * Determine if a file should be generated or skipped (user-provided)
+     */
+    private shouldGenerateFile(filePath: string): boolean {
+        const fileName = filePath.toLowerCase();
+        const extension = fileName.split('.').pop() || '';
+
+        // Skip user-provided file types
+        const userProvidedExtensions = [
+            '', 'avi', 'mov', 'mkv', 'webm',  // Video files
+            'mp3', 'wav', 'flac', 'aac',         // Audio files
+            'jpg', 'jpeg', 'png', 'gif', 'bmp', 'tiff', // Image files (datasets)
+            'pt', 'pth', 'h5', 'pkl', 'joblib', 'model', // Model weight files
+            'zip', 'tar', 'gz', '7z', 'rar',     // Archive files
+            'db', 'sqlite', 'sql',               // Database files
+            'csv', 'tsv',                        // CSV and TSV data files
+            'xlsx', 'xls', 'xlsm', 'xlsb',      // Excel files
+            'parquet', 'feather',                // Data format files
+        ];
+
+        if (userProvidedExtensions.includes(extension)) {
+            return false;
+        }
+
+        // Skip specific user-provided files
+        const userProvidedFiles = [
+            // '__init__.py',                    // Generate these - they're essential for Python packages
+            'setup.py',                          // Users create their own setup
+            'pyproject.toml',                    // Users configure their own build
+        ];
+
+        const baseFileName = filePath.split('/').pop() || '';
+        if (userProvidedFiles.includes(baseFileName.toLowerCase())) {
+            return false;
+        }
+
+        // Skip files in certain directories that are typically user-provided
+        const userProvidedDirs = [
+            'data/', 'dataset/', 'datasets/',   // Data directories
+            'models/weights/', 'weights/',      // Model weight directories
+            'test_data/', 'sample_data/',       // Test data directories
+            'assets/', 'media/',                // Media directories
+        ];
+
+        for (const dir of userProvidedDirs) {
+            if (filePath.toLowerCase().startsWith(dir)) {
+                return false;
+            }
+        }
+
+        // Generate all other files (code, configs, docs)
+        return true;
+    }
+
+    /**
+     * Create placeholder content for user-provided files
+     */
+    private createPlaceholderContent(filePath: string): string {
+        const fileName = filePath.split('/').pop() || '';
+        const extension = fileName.split('.').pop()?.toLowerCase() || '';
+
+        // Video files
+        if (['mp4', 'avi', 'mov', 'mkv', 'webm'].includes(extension)) {
+            return `# ${fileName}\n\n` +
+                `This is a placeholder for a video file that users should provide.\n\n` +
+                `Instructions:\n` +
+                `1. Replace this file with your actual video data\n` +
+                `2. Supported formats: MP4, AVI, MOV, MKV, WebM\n` +
+                `3. Place your video file at: ${filePath}\n\n` +
+                `Example usage in code:\n` +
+                `video_path = "${filePath}"\n` +
+                `cap = cv2.VideoCapture(video_path)\n`;
+        }
+
+        // Model weight files
+        if (['pt', 'pth', 'h5', 'pkl', 'joblib', 'model'].includes(extension)) {
+            return `# ${fileName}\n\n` +
+                `This is a placeholder for a trained model file that users should provide.\n\n` +
+                `Instructions:\n` +
+                `1. Train your model using the provided training scripts\n` +
+                `2. Save your trained model to: ${filePath}\n` +
+                `3. The model will be loaded automatically by the inference scripts\n\n` +
+                `Example training command:\n` +
+                `python train.py --save-path ${filePath}\n`;
+        }
+
+        // CSV and Excel data files
+        if (['csv', 'tsv', 'xlsx', 'xls', 'xlsm', 'xlsb', 'parquet', 'feather'].includes(extension)) {
+            return `# ${fileName}\n\n` +
+                `This is a placeholder for a data file that users should provide.\n\n` +
+                `Instructions:\n` +
+                `1. Replace this file with your actual dataset\n` +
+                `2. Supported formats: CSV, TSV, Excel (xlsx/xls), Parquet, Feather\n` +
+                `3. Place your data file at: ${filePath}\n\n` +
+                `Example usage in code:\n` +
+                `import pandas as pd\n` +
+                `df = pd.read_csv("${filePath}")  # For CSV files\n` +
+                `df = pd.read_excel("${filePath}")  # For Excel files\n`;
+        }
+
+        // __init__.py files
+        if (fileName === '__init__.py') {
+            return `# ${filePath}\n\n` +
+                `# This file makes Python treat the directory as a package.\n` +
+                `# Add your package initialization code here if needed.\n\n` +
+                `# Example:\n` +
+                `# from .main_module import MainClass\n` +
+                `# __version__ = "1.0.0"\n`;
+        }
+
+        // Generic placeholder
+        return `# ${fileName}\n\n` +
+            `This is a placeholder for a user-provided file.\n\n` +
+            `Instructions:\n` +
+            `1. Replace this placeholder with your actual file\n` +
+            `2. File location: ${filePath}\n` +
+            `3. Refer to the README for specific requirements\n`;
+    }
+
     private async createZipFile(projectName: string, structure: ProjectStructure): Promise<Buffer> {
         const zip = new JSZip();
 
-        // Create all folders first
-        for (const folder of structure.folders) {
-            zip.folder(folder);
+        console.log(`[ProjectGenerator] 📦 Creating ZIP with project folder: ${projectName}`);
+
+        // Create the main project folder first
+        const projectFolder = zip.folder(projectName);
+        if (!projectFolder) {
+            throw new Error(`Failed to create project folder: ${projectName}`);
         }
 
-        // Add all files
+        // Create all subfolders inside the project folder
+        for (const folder of structure.folders) {
+            // Skip the root project folder if it's already in the list
+            if (folder === projectName) {
+                continue;
+            }
+
+            // Remove project name prefix if it exists to avoid duplication
+            const cleanFolderPath = folder.startsWith(projectName + '/')
+                ? folder.substring(projectName.length + 1)
+                : folder;
+
+            if (cleanFolderPath) {
+                projectFolder.folder(cleanFolderPath);
+                console.log(`[ProjectGenerator] 📁 Created folder: ${projectName}/${cleanFolderPath}`);
+            }
+        }
+
+        // Add all files inside the project folder
         for (const file of structure.files) {
-            zip.file(file.path, file.content);
+            // Remove project name prefix if it exists to avoid duplication
+            const cleanFilePath = file.path.startsWith(projectName + '/')
+                ? file.path.substring(projectName.length + 1)
+                : file.path;
+
+            projectFolder.file(cleanFilePath, file.content);
+            console.log(`[ProjectGenerator] 📄 Added file: ${projectName}/${cleanFilePath}`);
         }
 
         const zipBuffer = await zip.generateAsync({
@@ -641,6 +902,7 @@ Generate the complete ${fileInfo.type} file content for this AI/ML project:`;
             compressionOptions: { level: 6 }
         });
 
+        console.log(`[ProjectGenerator] ✅ ZIP created successfully with ${structure.folders.length} folders and ${structure.files.length} files`);
         return zipBuffer;
     }
 }

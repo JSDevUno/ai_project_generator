@@ -1,5 +1,7 @@
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
+import { Search, Clock, AlertTriangle, Sparkles, CheckCircle } from 'lucide-react';
 import type { ProjectConfig, ModelType } from './MLScriptGenerator.js';
+import { apiService } from '../services/api.js';
 
 interface ProjectFormProps {
   onSubmit: (config: ProjectConfig) => void;
@@ -9,6 +11,57 @@ export function ProjectForm({ onSubmit }: ProjectFormProps) {
   const [projectName, setProjectName] = useState('');
   const [instruction, setInstruction] = useState('');
   const [model, setModel] = useState<ModelType>('kwaipilot/kat-coder-pro:free');
+  const [enableGitHubSearch, setEnableGitHubSearch] = useState(false);
+  const [rateLimitInfo, setRateLimitInfo] = useState<{
+    search: { limit: number; remaining: number; reset: string; resetIn: number };
+    core: { limit: number; remaining: number; reset: string; resetIn: number };
+  } | null>(null);
+  const [rateLimitLoading, setRateLimitLoading] = useState(false);
+
+  // Fetch rate limit info when GitHub search is enabled
+  useEffect(() => {
+    if (enableGitHubSearch) {
+      fetchRateLimit();
+    }
+  }, [enableGitHubSearch]);
+
+  const fetchRateLimit = async () => {
+    setRateLimitLoading(true);
+    try {
+      const rateLimit = await apiService.getGitHubRateLimit();
+      setRateLimitInfo(rateLimit);
+    } catch (error) {
+      console.error('Failed to fetch GitHub rate limit:', error);
+      setRateLimitInfo(null);
+    } finally {
+      setRateLimitLoading(false);
+    }
+  };
+
+  const formatResetTime = (resetIn: number) => {
+    if (resetIn <= 0) return 'Now';
+    const minutes = Math.floor(resetIn / 60);
+    const seconds = resetIn % 60;
+    if (minutes > 0) {
+      return `${minutes}m ${seconds}s`;
+    }
+    return `${seconds}s`;
+  };
+
+  const getRateLimitStatus = () => {
+    if (!rateLimitInfo) return null;
+    
+    const { search } = rateLimitInfo;
+    const percentage = (search.remaining / search.limit) * 100;
+    
+    if (percentage > 50) {
+      return { color: 'green', status: 'Good' };
+    } else if (percentage > 20) {
+      return { color: 'yellow', status: 'Limited' };
+    } else {
+      return { color: 'red', status: 'Critical' };
+    }
+  };
 
   const modelOptions = [
     {
@@ -84,7 +137,8 @@ export function ProjectForm({ onSubmit }: ProjectFormProps) {
     onSubmit({
       projectName: validProjectName,
       instruction: instruction.trim(),
-      model
+      model,
+      enableGitHubSearch
     });
   };
 
@@ -147,6 +201,107 @@ export function ProjectForm({ onSubmit }: ProjectFormProps) {
               </p>
             </div>
 
+            {/* GitHub Search Toggle */}
+            <div>
+              <div className="flex items-center space-x-3 mb-2">
+                <input
+                  type="checkbox"
+                  id="githubSearch"
+                  checked={enableGitHubSearch}
+                  onChange={(e) => setEnableGitHubSearch(e.target.checked)}
+                  className="h-4 w-4 text-blue-600 focus:ring-blue-500 border-gray-300 rounded"
+                />
+                <label htmlFor="githubSearch" className="flex items-center text-sm font-medium text-gray-700">
+                  <Search className="w-4 h-4 mr-2" />
+                  Search GitHub repositories for reference implementations
+                </label>
+              </div>
+              <div className="ml-7 p-3 bg-gray-50 rounded-lg">
+                <div className="text-xs text-gray-600">
+                  <strong>When enabled:</strong> The system will search GitHub for relevant repositories, 
+                  analyze their implementations, and incorporate best practices into your project plan.
+                </div>
+                <div className="text-xs text-gray-500 mt-1">
+                  This adds ~30-60 seconds to generation time but provides enhanced project quality.
+                </div>
+                {enableGitHubSearch && (
+                  <div className="mt-2 p-2 bg-blue-50 border border-blue-200 rounded text-xs text-blue-700 flex items-center">
+                    <Sparkles className="w-3 h-3 mr-1 flex-shrink-0" />
+                    <span><strong>Enhanced mode enabled:</strong> Your plan will include insights from top-rated repositories in your domain.</span>
+                  </div>
+                )}
+                
+                {/* GitHub Rate Limit Indicator */}
+                {enableGitHubSearch && (
+                  <div className="mt-3 border-t border-gray-200 pt-3">
+                    <div className="flex items-center justify-between mb-2">
+                      <span className="text-xs font-medium text-gray-700">GitHub API Status</span>
+                      {rateLimitLoading && (
+                        <div className="flex items-center text-xs text-gray-500">
+                          <div className="animate-spin rounded-full h-3 w-3 border-b-2 border-gray-500 mr-1"></div>
+                          Checking...
+                        </div>
+                      )}
+                    </div>
+                    
+                    {rateLimitInfo && !rateLimitLoading && (
+                      <div className="space-y-2">
+                        {/* Search API Limits */}
+                        <div className="flex items-center justify-between">
+                          <div className="flex items-center">
+                            <Search className="w-3 h-3 mr-1 text-gray-500" />
+                            <span className="text-xs text-gray-600">Search API</span>
+                          </div>
+                          <div className="flex items-center space-x-2">
+                            <div className={`w-2 h-2 rounded-full ${
+                              getRateLimitStatus()?.color === 'green' ? 'bg-green-500' :
+                              getRateLimitStatus()?.color === 'yellow' ? 'bg-yellow-500' : 'bg-red-500'
+                            }`}></div>
+                            <span className="text-xs font-medium">
+                              {rateLimitInfo.search.remaining}/{rateLimitInfo.search.limit}
+                            </span>
+                          </div>
+                        </div>
+                        
+                        {/* Reset Time */}
+                        {rateLimitInfo.search.remaining < rateLimitInfo.search.limit && (
+                          <div className="flex items-center justify-between text-xs text-gray-500">
+                            <div className="flex items-center">
+                              <Clock className="w-3 h-3 mr-1" />
+                              <span>Resets in</span>
+                            </div>
+                            <span>{formatResetTime(rateLimitInfo.search.resetIn)}</span>
+                          </div>
+                        )}
+                        
+                        {/* Warning for low limits */}
+                        {rateLimitInfo.search.remaining < 5 && (
+                          <div className="flex items-center p-2 bg-red-50 border border-red-200 rounded text-xs text-red-700">
+                            <AlertTriangle className="w-3 h-3 mr-1 flex-shrink-0" />
+                            <span>Low API quota. GitHub search may be limited.</span>
+                          </div>
+                        )}
+                        
+                        {/* Info for good limits */}
+                        {rateLimitInfo.search.remaining >= 10 && (
+                          <div className="text-xs text-green-700 bg-green-50 border border-green-200 rounded p-2 flex items-center">
+                            <CheckCircle className="w-3 h-3 mr-1 flex-shrink-0" />
+                            <span>Sufficient API quota for GitHub search</span>
+                          </div>
+                        )}
+                      </div>
+                    )}
+                    
+                    {!rateLimitInfo && !rateLimitLoading && (
+                      <div className="text-xs text-gray-500 italic">
+                        Unable to check GitHub API limits
+                      </div>
+                    )}
+                  </div>
+                )}
+              </div>
+            </div>
+
             {/* Model Selection */}
             <div>
               <label htmlFor="model" className="block text-sm font-medium text-gray-700 mb-2">
@@ -187,12 +342,13 @@ export function ProjectForm({ onSubmit }: ProjectFormProps) {
               <button
                 type="submit"
                 disabled={!isValid}
-                className={`w-full sm:w-auto px-6 py-3 text-sm font-medium rounded-lg transition-colors ${isValid
+                className={`w-full sm:w-auto px-6 py-3 text-sm font-medium rounded-lg transition-colors flex items-center justify-center ${isValid
                   ? 'bg-blue-600 text-white hover:bg-blue-700 focus:ring-2 focus:ring-blue-500 focus:ring-offset-2'
                   : 'bg-gray-100 text-gray-400 cursor-not-allowed'
                   }`}
               >
-                Generate AI Project Plan
+                {enableGitHubSearch && <Search className="w-4 h-4 mr-2" />}
+                {enableGitHubSearch ? 'Generate AI Project Plan with GitHub Search' : 'Generate AI Project Plan'}
               </button>
             </div>
           </form>

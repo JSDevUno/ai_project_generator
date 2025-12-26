@@ -4,6 +4,9 @@
   "type": "module",
   "scripts": {
     "dev": "tsx watch src/app.ts",
+    "dev-clean": "powershell -ExecutionPolicy Bypass -File start-backend.ps1",
+    "kill-port": "powershell -Command \"$p = Get-NetTCPConnection -LocalPort 3002 -ErrorAction SilentlyContinue | Select-Object -ExpandProperty OwningProcess -Unique; if($p) { Stop-Process -Id $p -Force }\"",
+    "dev-safe": "npm run kill-port && npm run dev",
     "build": "tsc",
     "start": "node dist/app.js"
   },

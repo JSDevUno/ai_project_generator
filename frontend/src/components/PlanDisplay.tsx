@@ -1,6 +1,7 @@
 import { useState } from 'react';
+import { Info, Search, GitBranch, Star, GitFork, BarChart3, ExternalLink, Lightbulb, CheckCircle } from 'lucide-react';
 import type { GeneratedPlan } from './MLScriptGenerator.js';
-import { Info } from 'lucide-react';
+import type { JSX } from 'react/jsx-runtime';
 
 interface PlanDisplayProps {
   plan: GeneratedPlan;
@@ -89,11 +90,120 @@ export function PlanDisplay({ plan, onApprove, onRethink }: PlanDisplayProps) {
 
         {/* Project Details */}
         <div className="px-6 py-4 bg-gray-50 border-b border-gray-200">
-          <div className="text-sm">
-            <span className="font-medium text-gray-700">Project Description:</span>
-            <p className="mt-1 text-gray-600">{plan.instruction}</p>
+          <div className="text-sm space-y-2">
+            <div>
+              <span className="font-medium text-gray-700">Project Description:</span>
+              <p className="mt-1 text-gray-600">{plan.instruction}</p>
+            </div>
+            {plan.searchEnabled && (
+              <div>
+                <span className="font-medium text-gray-700 flex items-center">
+                  <Search className="w-4 h-4 mr-1" />
+                  GitHub Search:
+                </span>
+                <span className="ml-2 inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium bg-green-100 text-green-800">
+                  <CheckCircle className="w-3 h-3 mr-1" />
+                  Enabled
+                </span>
+              </div>
+            )}
           </div>
         </div>
+
+        {/* GitHub Repositories Section */}
+        {plan.searchEnabled && (
+          <div className="px-6 py-4 bg-blue-50 border-b border-blue-200">
+            <h3 className="text-sm font-semibold text-blue-900 mb-3 flex items-center">
+              <GitBranch className="w-4 h-4 mr-2" />
+              Referenced GitHub Repositories
+            </h3>
+
+            {plan.repositories && plan.repositories.length > 0 ? (
+              <>
+                <div className="space-y-3">
+                  {plan.repositories.slice(0, 3).map((repo, index) => (
+                    <div key={index} className="bg-white p-3 rounded border border-blue-200">
+                      <div className="flex items-center justify-between mb-2">
+                        <div className="flex items-center space-x-2">
+                          <h4 className="font-medium text-gray-900 text-sm">{repo.name}</h4>
+                          <a
+                            href={repo.url}
+                            target="_blank"
+                            rel="noopener noreferrer"
+                            className="text-blue-600 hover:text-blue-800 text-xs flex items-center"
+                          >
+                            <ExternalLink className="w-3 h-3 mr-1" />
+                            View
+                          </a>
+                        </div>
+                        <span className="text-xs bg-green-100 text-green-800 px-2 py-1 rounded font-medium">
+                          Rank #{repo.rank}
+                        </span>
+                      </div>
+                      <p className="text-xs text-gray-600 mb-2 line-clamp-2">{repo.description}</p>
+                      <div className="flex flex-wrap gap-1 mb-2">
+                        {repo.keyFeatures && repo.keyFeatures.slice(0, 3).map((feature, idx) => (
+                          <span key={idx} className="text-xs bg-gray-100 text-gray-700 px-2 py-1 rounded">
+                            {feature}
+                          </span>
+                        ))}
+                      </div>
+                      <div className="flex items-center justify-between text-xs text-gray-500">
+                        <div className="flex items-center space-x-3">
+                          <span className="flex items-center">
+                            <Star className="w-3 h-3 mr-1" />
+                            {repo.stars?.toLocaleString() || 0}
+                          </span>
+                          <span className="flex items-center">
+                            <GitFork className="w-3 h-3 mr-1" />
+                            {repo.forks?.toLocaleString() || 0}
+                          </span>
+                          <span className="flex items-center">
+                            <BarChart3 className="w-3 h-3 mr-1" />
+                            {repo.relevanceScore || 0}%
+                          </span>
+                        </div>
+                        <span className="text-xs text-gray-400 truncate max-w-32">{repo.reasoning || 'Quality implementation'}</span>
+                      </div>
+
+                      {/* Implementation Details */}
+                      <div className="mt-3 pt-2 border-t border-gray-100">
+                        <div className="text-xs text-blue-700 font-medium mb-1 flex items-center">
+                          <Lightbulb className="w-3 h-3 mr-1" />
+                          How this will be implemented:
+                        </div>
+                        <div className="text-xs text-blue-600 space-y-1">
+                          {getImplementationDetails(repo, plan.instruction)}
+                        </div>
+                      </div>
+                    </div>
+                  ))}
+                </div>
+                <div className="mt-3 text-xs text-blue-700 flex items-center">
+                  <Lightbulb className="w-3 h-3 mr-1" />
+                  These repositories influenced the project structure and technology choices in the plan below.
+                </div>
+              </>
+            ) : (
+              <div className="bg-yellow-50 border border-yellow-200 rounded-lg p-3">
+                <div className="flex items-center">
+                  <div className="flex-shrink-0">
+                    <Info className="h-4 w-4 text-yellow-400" />
+                  </div>
+                  <div className="ml-3">
+                    <p className="text-xs text-yellow-800">
+                      <strong>No repositories found</strong> - GitHub search was enabled but no relevant repositories were discovered.
+                      The plan was generated using standard AI knowledge.
+                    </p>
+                    <p className="text-xs text-yellow-600 mt-1">
+                      This might happen due to very specific requirements, API rate limits, or network issues.
+                    </p>
+                  </div>
+                </div>
+              </div>
+            )}
+          </div>
+        )}
 
         {/* Plan Content - Now properly formatted */}
         <div className="px-6 py-6">
@@ -131,8 +241,9 @@ export function PlanDisplay({ plan, onApprove, onRethink }: PlanDisplayProps) {
                 className="w-full px-3 py-2 border border-yellow-300 rounded-md focus:ring-2 focus:ring-yellow-500 focus:border-yellow-500 text-sm"
               />
               <div className="flex flex-col sm:flex-row sm:justify-between sm:items-center mt-3 space-y-2 sm:space-y-0">
-                <p className="text-xs text-yellow-600 text-center sm:text-left">
-                  💡 Be specific about what you want - the AI will adapt the entire plan accordingly
+                <p className="text-xs text-yellow-600 text-center sm:text-left flex items-center justify-center sm:justify-start">
+                  <Lightbulb className="w-3 h-3 mr-1" />
+                  Be specific about what you want - the AI will adapt the entire plan accordingly
                 </p>
                 <div className="flex justify-center sm:justify-end space-x-3">
                   <button
@@ -148,8 +259,8 @@ export function PlanDisplay({ plan, onApprove, onRethink }: PlanDisplayProps) {
                     onClick={handleRethinkWithFeedback}
                     disabled={!feedback.trim()}
                     className={`px-4 py-1.5 text-sm font-medium rounded-md focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-yellow-500 ${feedback.trim()
-                        ? 'text-white bg-yellow-600 hover:bg-yellow-700'
-                        : 'text-gray-400 bg-gray-100 cursor-not-allowed'
+                      ? 'text-white bg-yellow-600 hover:bg-yellow-700'
+                      : 'text-gray-400 bg-gray-100 cursor-not-allowed'
                       }`}
                   >
                     Update Plan
@@ -196,8 +307,9 @@ export function PlanDisplay({ plan, onApprove, onRethink }: PlanDisplayProps) {
                 <li><strong>Customize Plan:</strong> Click to request specific changes, additions, or modifications</li>
                 <li><strong>Approve & Generate:</strong> Create the complete project with the current plan</li>
               </ul>
-              <p className="mt-2 text-xs text-blue-600">
-                💡 The customization feature lets you fine-tune every aspect of your project before generation
+              <p className="mt-2 text-xs text-blue-600 flex items-center">
+                <Lightbulb className="w-3 h-3 mr-1" />
+                The customization feature lets you fine-tune every aspect of your project before generation
               </p>
             </div>
           </div>
@@ -205,4 +317,114 @@ export function PlanDisplay({ plan, onApprove, onRethink }: PlanDisplayProps) {
       </div>
     </div>
   );
+}
+
+// Helper function to generate implementation details for each repository
+function getImplementationDetails(repo: any, instruction: string): JSX.Element[] {
+  const details: JSX.Element[] = [];
+  const instructionLower = instruction.toLowerCase();
+  const repoName = repo.name.toLowerCase();
+  const keyFeatures = repo.keyFeatures || [];
+  const techStack = repo.techStack || [];
+
+  // Architecture patterns
+  if (repo.architecture === 'ML Pipeline') {
+    details.push(
+      <div key="architecture" className="flex items-start">
+        <span className="text-blue-500 mr-1">•</span>
+        <span>Adopt <strong>{repo.name}</strong>'s ML pipeline architecture for training and inference workflows</span>
+      </div>
+    );
+  }
+
+  // Technology stack integration
+  if (techStack.includes('Python') || techStack.includes('PyTorch') || techStack.includes('TensorFlow')) {
+    const frameworks = techStack.filter((tech: string) => ['PyTorch', 'TensorFlow', 'Keras'].includes(tech));
+    if (frameworks.length > 0) {
+      details.push(
+        <div key="frameworks" className="flex items-start">
+          <span className="text-blue-500 mr-1">•</span>
+          <span>Use <strong>{frameworks.join(', ')}</strong> framework patterns from {repo.name}</span>
+        </div>
+      );
+    }
+  }
+
+  // Feature-specific implementations
+  if (keyFeatures.includes('Testing Suite')) {
+    details.push(
+      <div key="testing" className="flex items-start">
+        <span className="text-blue-500 mr-1">•</span>
+        <span>Implement testing patterns and validation methods from {repo.name}</span>
+      </div>
+    );
+  }
+
+  if (keyFeatures.includes('Docker Support')) {
+    details.push(
+      <div key="docker" className="flex items-start">
+        <span className="text-blue-500 mr-1">•</span>
+        <span>Integrate containerization setup inspired by {repo.name}'s Docker configuration</span>
+      </div>
+    );
+  }
+
+  if (keyFeatures.includes('Documentation')) {
+    details.push(
+      <div key="docs" className="flex items-start">
+        <span className="text-blue-500 mr-1">•</span>
+        <span>Follow documentation structure and README format from {repo.name}</span>
+      </div>
+    );
+  }
+
+  // Algorithm-specific implementations
+  if (instructionLower.includes('yolo') && repoName.includes('yolo')) {
+    details.push(
+      <div key="yolo" className="flex items-start">
+        <span className="text-blue-500 mr-1">•</span>
+        <span>Incorporate YOLO model architecture and optimization techniques from {repo.name}</span>
+      </div>
+    );
+  }
+
+  if (instructionLower.includes('clustering') && (repoName.includes('cluster') || repoName.includes('kmeans'))) {
+    details.push(
+      <div key="clustering" className="flex items-start">
+        <span className="text-blue-500 mr-1">•</span>
+        <span>Apply clustering algorithms and evaluation metrics from {repo.name}</span>
+      </div>
+    );
+  }
+
+  if (instructionLower.includes('detection') && repoName.includes('detection')) {
+    details.push(
+      <div key="detection" className="flex items-start">
+        <span className="text-blue-500 mr-1">•</span>
+        <span>Leverage object detection preprocessing and post-processing from {repo.name}</span>
+      </div>
+    );
+  }
+
+  // Performance optimizations
+  if (repo.relevanceScore > 80) {
+    details.push(
+      <div key="optimization" className="flex items-start">
+        <span className="text-blue-500 mr-1">•</span>
+        <span>Adopt performance optimization strategies and best practices from this highly relevant repository</span>
+      </div>
+    );
+  }
+
+  // Fallback if no specific implementations found
+  if (details.length === 0) {
+    details.push(
+      <div key="general" className="flex items-start">
+        <span className="text-blue-500 mr-1">•</span>
+        <span>Reference code structure, naming conventions, and implementation patterns from {repo.name}</span>
+      </div>
+    );
+  }
+
+  return details;
 }

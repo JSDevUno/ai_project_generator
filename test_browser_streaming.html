@@ -1,0 +1,106 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <title>Test Browser Streaming</title>
+</head>
+<body>
+    <h1>Test Browser Streaming</h1>
+    <button onclick="testStreaming()">Test Streaming Connection</button>
+    <div id="output"></div>
+
+    <script>
+        async function testStreaming() {
+            const output = document.getElementById('output');
+            output.innerHTML = '<p>🧪 Testing streaming connection...</p>';
+            
+            const testData = {
+                projectName: "browser_test",
+                instruction: "Create a simple test project",
+                plan: `
+browser_test/
+├── src/
+│   └── main.py
+└── README.md
+                `,
+                model: "kwaipilot/kat-coder-pro:free",
+                sessionId: "browser_test_123"
+            };
+
+            try {
+                console.log('📡 Making streaming request...');
+                output.innerHTML += '<p>📡 Making streaming request...</p>';
+                
+                const response = await fetch('http://localhost:3002/api/stream/generate-stream', {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json',
+                    },
+                    body: JSON.stringify(testData)
+                });
+
+                console.log('📡 Response status:', response.status);
+                output.innerHTML += `<p>📡 Response status: ${response.status}</p>`;
+
+                if (!response.ok) {
+                    const errorText = await response.text();
+                    console.error('❌ Request failed:', errorText);
+                    output.innerHTML += `<p>❌ Request failed: ${errorText}</p>`;
+                    return;
+                }
+
+                console.log('✅ Starting to read stream...');
+                output.innerHTML += '<p>✅ Starting to read stream...</p>';
+
+                const reader = response.body.getReader();
+                const decoder = new TextDecoder();
+                let buffer = '';
+                let messageCount = 0;
+
+                while (true) {
+                    const { done, value } = await reader.read();
+
+                    if (done) {
+                        console.log('✅ Stream completed');
+                        output.innerHTML += '<p>✅ Stream completed</p>';
+                        break;
+                    }
+
+                    buffer += decoder.decode(value, { stream: true });
+                    const lines = buffer.split('\n');
+                    buffer = lines.pop() || '';
+
+                    for (const line of lines) {
+                        if (line.trim() && line.startsWith('data: ')) {
+                            try {
+                                const data = JSON.parse(line.slice(6));
+                                messageCount++;
+                                console.log(`📨 Message ${messageCount}:`, data);
+                                output.innerHTML += `<p>📨 Message ${messageCount}: ${JSON.stringify(data)}</p>`;
+                            } catch (e) {
+                                console.warn('Failed to parse:', line);
+                                output.innerHTML += `<p>⚠️ Failed to parse: ${line}</p>`;
+                            }
+                        } else if (line.trim()) {
+                            console.log('📨 Raw line:', line);
+                            output.innerHTML += `<p>📨 Raw line: ${line}</p>`;
+                        }
+                    }
+
+                    // Safety limit
+                    if (messageCount > 10) {
+                        console.log('🛑 Stopping after 10 messages for testing');
+                        output.innerHTML += '<p>🛑 Stopping after 10 messages for testing</p>';
+                        break;
+                    }
+                }
+
+                output.innerHTML += `<p>🎉 Test completed! Received ${messageCount} messages</p>`;
+
+            } catch (error) {
+                console.error('💥 Test failed:', error);
+                output.innerHTML += `<p>💥 Test failed: ${error.message}</p>`;
+            }
+        }
+    </script>
+</body>
+</html>
