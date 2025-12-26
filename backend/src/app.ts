@@ -79,7 +79,8 @@ if (process.env.NODE_ENV !== 'production') {
   app.listen(PORT, () => {
     console.log(`🚀 [Server] AI Project Generator running on http://localhost:${PORT}`);
     console.log(`📊 Environment: ${process.env.NODE_ENV || 'development'}`);
-    console.log(`🔑 OpenRouter API Key: ${process.env.OPENROUTER_API_KEY ? 'Configured ✅' : 'Missing ❌'}`);
+    console.log(`🔑 OpenRouter API Key: ${process.env.OPENROUTER_API_KEY ? 'Configured ✅' : 'Missing ❌'}
+🔑 GitHub API Key: ${process.env.GITHUB_API_KEY ? 'Configured ✅' : 'Missing ❌'}`);
     console.log(`🏥 Health check: http://localhost:${PORT}/api/health`);
   });
 }
