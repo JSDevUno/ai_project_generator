@@ -7,7 +7,18 @@ import { apiService } from '../services/api.js';
 import { Brain } from 'lucide-react';
 
 export type WorkflowState = 'input' | 'plan' | 'generating' | 'preview' | 'complete';
-export type ModelType = 'kwaipilot/kat-coder-pro:free' | 'meta-llama/llama-4-maverick:free' | 'qwen/qwen3-coder:free' | 'openai/gpt-oss-120b:free' | 'openai/gpt-oss-20b:free' | 'meta-llama/llama-3-8b-instruct:free' | 'mistralai/mixtral-8x7b-instruct:free' | 'mistralai/mistral-7b-instruct:free' | 'openai/gpt-oss-120b';
+export type ModelType = 
+  | 'kwaipilot/kat-coder-pro:free'
+  | 'mistralai/devstral-2512:free'
+  | 'xiaomi/mimo-v2-flash:free'
+  | 'nvidia/nemotron-3-nano-30b-a3b:free'
+  | 'qwen/qwen3-coder:free'
+  | 'deepseek/deepseek-r1-0528:free'
+  | 'mistralai/mistral-small-3.1-24b-instruct:free'
+  | 'mistralai/mistral-7b-instruct:free'
+  | 'meta-llama/llama-3.3-70b-instruct:free'
+  | 'google/gemma-3-27b-it:free'
+  | 'z-ai/glm-4.5-air:free';
 
 export interface ProjectConfig {
     projectName: string;

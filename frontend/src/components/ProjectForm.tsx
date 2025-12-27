@@ -1,5 +1,5 @@
 import { useState, useEffect } from 'react';
-import { Search, Clock, AlertTriangle, Sparkles, CheckCircle } from 'lucide-react';
+import { Search, Clock, AlertTriangle, Sparkles, CheckCircle, Star, Crown, Award, Trophy, Medal, ChevronDown } from 'lucide-react';
 import type { ProjectConfig, ModelType } from './MLScriptGenerator.js';
 import { apiService } from '../services/api.js';
 
@@ -17,6 +17,7 @@ export function ProjectForm({ onSubmit }: ProjectFormProps) {
     core: { limit: number; remaining: number; reset: string; resetIn: number };
   } | null>(null);
   const [rateLimitLoading, setRateLimitLoading] = useState(false);
+  const [isDropdownOpen, setIsDropdownOpen] = useState(false);
 
   // Fetch rate limit info when GitHub search is enabled
   useEffect(() => {
@@ -24,6 +25,20 @@ export function ProjectForm({ onSubmit }: ProjectFormProps) {
       fetchRateLimit();
     }
   }, [enableGitHubSearch]);
+
+  // Close dropdown when clicking outside
+  useEffect(() => {
+    const handleClickOutside = (event: MouseEvent) => {
+      if (isDropdownOpen && !(event.target as Element).closest('.relative')) {
+        setIsDropdownOpen(false);
+      }
+    };
+
+    document.addEventListener('mousedown', handleClickOutside);
+    return () => {
+      document.removeEventListener('mousedown', handleClickOutside);
+    };
+  }, [isDropdownOpen]);
 
   const fetchRateLimit = async () => {
     setRateLimitLoading(true);
@@ -67,56 +82,87 @@ export function ProjectForm({ onSubmit }: ProjectFormProps) {
     {
       value: 'kwaipilot/kat-coder-pro:free',
       label: 'KAT Coder Pro (Free)',
-      description: 'Specialized coding model, excellent for generating high-quality code',
-      cost: 'Free'
+      description: '256K context, optimized for agentic coding, 73.4% solve rate on SWE-Bench',
+      cost: 'Free',
+      status: 'verified',
+      rank: 1,
+      icon: 'crown'
     },
     {
-      value: 'meta-llama/llama-4-maverick:free',
-      label: 'Llama 4 Maverick (Free)',
-      description: 'Latest Meta Llama 4 model with enhanced reasoning and coding capabilities',
-      cost: 'Free'
+      value: 'mistralai/devstral-2512:free',
+      label: 'Devstral 2512 (Free)',
+      description: '123B params, 256K context, specialized in agentic coding & multi-file projects',
+      cost: 'Free',
+      status: 'verified',
+      rank: 2,
+      icon: 'trophy'
+    },
+    {
+      value: 'xiaomi/mimo-v2-flash:free',
+      label: 'Mimo V2 Flash (Free)',
+      description: '309B total/15B active params, 256K context, excels at reasoning & coding',
+      cost: 'Free',
+      status: 'verified',
+      rank: 3,
+      icon: 'award'
+    },
+    {
+      value: 'nvidia/nemotron-3-nano-30b-a3b:free',
+      label: 'Nemotron 3 Nano (Free)',
+      description: '30B MoE, optimized for agentic AI systems',
+      cost: 'Free',
+      status: 'verified',
+      rank: 4,
+      icon: 'medal'
     },
     {
       value: 'qwen/qwen3-coder:free',
       label: 'Qwen 3 Coder (Free)',
-      description: 'Alibaba\'s specialized coding model with strong programming abilities',
-      cost: 'Free'
+      description: '480B MoE model, optimized for function calling & long-context coding',
+      cost: 'Free',
+      status: 'working'
     },
     {
-      value: 'openai/gpt-oss-20b:free',
-      label: 'GPT-OSS 20B (Free)',
-      description: 'Large 20B parameter model, excellent quality and completely free!',
-      cost: 'Free'
+      value: 'deepseek/deepseek-r1-0528:free',
+      label: 'DeepSeek R1 (Free)',
+      description: '671B params (37B active), strong reasoning for coding',
+      cost: 'Free',
+      status: 'working'
     },
     {
-      value: 'openai/gpt-oss-120b:free',
-      label: 'GPT-OSS 120B (Free)',
-      description: 'Massive 120B parameter model with exceptional quality, completely free!',
-      cost: 'Free'
+      value: 'mistralai/mistral-small-3.1-24b-instruct:free',
+      label: 'Mistral Small 3.1 (Free)',
+      description: '24B params, reliable performer for various coding tasks',
+      cost: 'Free',
+      status: 'working'
     },
     {
       value: 'mistralai/mistral-7b-instruct:free',
       label: 'Mistral 7B (Free)',
-      description: 'Smaller but efficient instruction-tuned model',
-      cost: 'Free'
+      description: '32K context, general purpose coding',
+      cost: 'Free',
+      status: 'working'
     },
     {
-      value: 'meta-llama/llama-3-8b-instruct:free',
-      label: 'Llama 3 8B (Free)',
-      description: 'Meta\'s Llama 3, very capable for complex tasks',
-      cost: 'Free'
+      value: 'meta-llama/llama-3.3-70b-instruct:free',
+      label: 'Llama 3.3 70B (Free)',
+      description: '70B params, 131K context, strong general coding',
+      cost: 'Free',
+      status: 'working'
     },
     {
-      value: 'mistralai/mixtral-8x7b-instruct:free',
-      label: 'Mixtral 8x7B (Free)',
-      description: 'Mistral\'s mixture of experts model',
-      cost: 'Free'
+      value: 'google/gemma-3-27b-it:free',
+      label: 'Gemma 3 27B (Free)',
+      description: '27B params, 131K context, multimodal with structured outputs',
+      cost: 'Free',
+      status: 'working'
     },
     {
-      value: 'openai/gpt-oss-120b',
-      label: 'GPT-OSS 120B (Premium)',
-      description: 'Largest model, highest quality but costs credits',
-      cost: 'Paid'
+      value: 'z-ai/glm-4.5-air:free',
+      label: 'GLM 4.5 Air (Free)',
+      description: 'MoE architecture, hybrid reasoning modes, agent-centric',
+      cost: 'Free',
+      status: 'working'
     }
   ];
 
@@ -307,32 +353,111 @@ export function ProjectForm({ onSubmit }: ProjectFormProps) {
               <label htmlFor="model" className="block text-sm font-medium text-gray-700 mb-2">
                 AI Model Selection
               </label>
-              <select
-                id="model"
-                value={model}
-                onChange={(e) => setModel(e.target.value as ModelType)}
-                className="w-full px-3 sm:px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500 transition-colors text-base"
-              >
-                {modelOptions.map((option) => (
-                  <option key={option.value} value={option.value}>
-                    {option.label} - {option.cost}
-                  </option>
-                ))}
-              </select>
+              
+              {/* Custom Dropdown with Lucide Icons */}
+              <div className="relative">
+                <button
+                  type="button"
+                  onClick={() => setIsDropdownOpen(!isDropdownOpen)}
+                  className="w-full px-3 sm:px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500 transition-colors text-base bg-white text-left flex items-center justify-between"
+                >
+                  <div className="flex items-center">
+                    {(() => {
+                      const selectedModel = modelOptions.find(opt => opt.value === model);
+                      if (selectedModel?.icon === 'crown') {
+                        return <Crown className="w-4 h-4 text-yellow-500 mr-2" />;
+                      } else if (selectedModel?.icon === 'trophy') {
+                        return <Trophy className="w-4 h-4 text-orange-500 mr-2" />;
+                      } else if (selectedModel?.icon === 'award') {
+                        return <Award className="w-4 h-4 text-purple-500 mr-2" />;
+                      } else if (selectedModel?.icon === 'medal') {
+                        return <Medal className="w-4 h-4 text-blue-500 mr-2" />;
+                      } else if (selectedModel?.status === 'verified') {
+                        return <CheckCircle className="w-4 h-4 text-green-500 mr-2" />;
+                      } else if (selectedModel?.status === 'working') {
+                        return <Star className="w-4 h-4 text-blue-500 mr-2" />;
+                      }
+                      return null;
+                    })()}
+                    <span>{modelOptions.find(opt => opt.value === model)?.label} - {modelOptions.find(opt => opt.value === model)?.cost}</span>
+                  </div>
+                  <ChevronDown className={`w-4 h-4 text-gray-500 transition-transform ${isDropdownOpen ? 'rotate-180' : ''}`} />
+                </button>
+                
+                {isDropdownOpen && (
+                  <div className="absolute z-10 w-full mt-1 bg-white border border-gray-300 rounded-lg shadow-lg max-h-60 overflow-y-auto">
+                    {modelOptions.map((option) => (
+                      <button
+                        key={option.value}
+                        type="button"
+                        onClick={() => {
+                          setModel(option.value as ModelType);
+                          setIsDropdownOpen(false);
+                        }}
+                        className={`w-full px-3 sm:px-4 py-3 text-left hover:bg-gray-50 flex items-center transition-colors ${
+                          model === option.value ? 'bg-blue-50 text-blue-700' : 'text-gray-700'
+                        }`}
+                      >
+                        {option.icon === 'crown' && <Crown className="w-4 h-4 text-yellow-500 mr-2" />}
+                        {option.icon === 'trophy' && <Trophy className="w-4 h-4 text-orange-500 mr-2" />}
+                        {option.icon === 'award' && <Award className="w-4 h-4 text-purple-500 mr-2" />}
+                        {option.icon === 'medal' && <Medal className="w-4 h-4 text-blue-500 mr-2" />}
+                        {!option.icon && option.status === 'verified' && <CheckCircle className="w-4 h-4 text-green-500 mr-2" />}
+                        {!option.icon && option.status === 'working' && <Star className="w-4 h-4 text-blue-500 mr-2" />}
+                        <div className="flex-1">
+                          <div className="font-medium">{option.label}</div>
+                          <div className="text-xs text-gray-500">{option.cost}</div>
+                        </div>
+                      </button>
+                    ))}
+                  </div>
+                )}
+              </div>
               <div className="mt-2 p-3 bg-gray-50 rounded-lg">
-                <div className="text-xs sm:text-sm text-gray-700">
+                <div className="flex items-center text-xs sm:text-sm text-gray-700">
+                  {(() => {
+                    const selectedModel = modelOptions.find(opt => opt.value === model);
+                    if (selectedModel?.icon === 'crown') {
+                      return <Crown className="w-4 h-4 text-yellow-500 mr-2" />;
+                    } else if (selectedModel?.icon === 'trophy') {
+                      return <Trophy className="w-4 h-4 text-orange-500 mr-2" />;
+                    } else if (selectedModel?.icon === 'award') {
+                      return <Award className="w-4 h-4 text-purple-500 mr-2" />;
+                    } else if (selectedModel?.icon === 'medal') {
+                      return <Medal className="w-4 h-4 text-blue-500 mr-2" />;
+                    } else if (selectedModel?.status === 'verified') {
+                      return <CheckCircle className="w-4 h-4 text-green-500 mr-2" />;
+                    } else if (selectedModel?.status === 'working') {
+                      return <Star className="w-4 h-4 text-blue-500 mr-2" />;
+                    }
+                    return null;
+                  })()}
                   <strong>{modelOptions.find(opt => opt.value === model)?.label}</strong>
                 </div>
                 <div className="text-xs text-gray-600 mt-1">
                   {modelOptions.find(opt => opt.value === model)?.description}
                 </div>
-                <div className="text-xs mt-1">
+                <div className="flex items-center justify-between mt-2">
                   <span className={`inline-flex px-2 py-1 rounded-full text-xs font-medium ${modelOptions.find(opt => opt.value === model)?.cost === 'Free'
                     ? 'bg-green-100 text-green-800'
                     : 'bg-orange-100 text-orange-800'
                     }`}>
                     {modelOptions.find(opt => opt.value === model)?.cost}
                   </span>
+                  <div className="flex items-center text-xs">
+                    {modelOptions.find(opt => opt.value === model)?.status === 'verified' && (
+                      <span className="flex items-center text-green-600">
+                        <CheckCircle className="w-3 h-3 mr-1" />
+                        Verified Available
+                      </span>
+                    )}
+                    {modelOptions.find(opt => opt.value === model)?.status === 'working' && (
+                      <span className="flex items-center text-blue-600">
+                        <Star className="w-3 h-3 mr-1" />
+                        Confirmed Working
+                      </span>
+                    )}
+                  </div>
                 </div>
               </div>
             </div>
