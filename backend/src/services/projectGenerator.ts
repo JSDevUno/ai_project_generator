@@ -61,7 +61,7 @@ export class ProjectGenerator {
                     console.log(`[ProjectGenerator] 🔄 Starting generation for: ${fileInfo.path}`);
 
                     // Clean filename for progress updates (remove comments and extra whitespace)
-                    const cleanFilename = fileInfo.path.split('#')[0].trim().replace(/^\/+/, '');
+                    const cleanFilename = this.cleanFileName(fileInfo.path);
                     console.log(`[ProjectGenerator] 🧹 Cleaned filename: "${fileInfo.path}" → "${cleanFilename}"`);
 
                     // Notify file generation start
@@ -105,7 +105,7 @@ export class ProjectGenerator {
                     console.error(`[ProjectGenerator] Error generating ${fileInfo.path}:`, error);
 
                     // Clean filename for error progress too
-                    const cleanFilename = fileInfo.path.split('#')[0].trim().replace(/^\/+/, '');
+                    const cleanFilename = this.cleanFileName(fileInfo.path);
 
                     onProgress({
                         type: 'error',
@@ -266,8 +266,11 @@ export class ProjectGenerator {
                 const cleanedContent = this.cleanContent(content);
                 const fileSize = Math.round(cleanedContent.length / 1024 * 100) / 100;
 
+                // Use cleaned filename for the file path
+                const cleanedPath = this.cleanFileName(fileInfo.path);
+
                 files.push({
-                    path: fileInfo.path,
+                    path: cleanedPath,
                     content: cleanedContent,
                     type: this.mapFileType(fileInfo.type)
                 });
@@ -275,32 +278,33 @@ export class ProjectGenerator {
                 // Send file completion update
                 progressCallback?.({
                     type: 'file_complete',
-                    message: `Generated ${fileInfo.path}`,
+                    message: `Generated ${cleanedPath}`,
                     currentFile: i + 1,
                     totalFiles,
                     progress,
                     fileInfo: {
-                        path: fileInfo.path,
+                        path: cleanedPath,
                         type: fileInfo.type,
                         size: `${fileSize}KB`,
                         duration: `${duration}ms`
                     },
                     nextFile: i < planStructure.files.length - 1 ? {
-                        path: planStructure.files[i + 1].path,
+                        path: this.cleanFileName(planStructure.files[i + 1].path),
                         type: planStructure.files[i + 1].type
                     } : null
                 });
 
-                console.log(`✅ Generated ${fileInfo.path} (${fileSize}KB) in ${duration}ms`);
+                console.log(`✅ Generated ${cleanedPath} (${fileSize}KB) in ${duration}ms`);
 
             } catch (error) {
                 console.error(`❌ Failed to generate ${fileInfo.path}:`, error);
 
                 // Create a placeholder file so the project structure is maintained
                 const placeholderContent = `# ${fileInfo.path}\n# Generation failed: ${error instanceof Error ? error.message : 'Unknown error'}\n# Please regenerate this file manually\n`;
+                const cleanedPath = this.cleanFileName(fileInfo.path);
 
                 files.push({
-                    path: fileInfo.path,
+                    path: cleanedPath,
                     content: placeholderContent,
                     type: this.mapFileType(fileInfo.type)
                 });
@@ -308,7 +312,7 @@ export class ProjectGenerator {
                 // Send error notification but continue
                 progressCallback?.({
                     type: 'file_error',
-                    message: `Failed to generate ${fileInfo.path}`,
+                    message: `Failed to generate ${cleanedPath}`,
                     currentFile: i + 1,
                     totalFiles,
                     progress,
@@ -326,12 +330,13 @@ export class ProjectGenerator {
         // Add placeholder files for skipped user-provided files
         for (const skippedFile of skippedFiles) {
             const placeholderContent = this.createPlaceholderContent(skippedFile.path);
+            const cleanedPath = this.cleanFileName(skippedFile.path);
             files.push({
-                path: skippedFile.path,
+                path: cleanedPath,
                 content: placeholderContent,
                 type: this.mapFileType(skippedFile.type)
             });
-            console.log(`📝 Added placeholder for user-provided file: ${skippedFile.path}`);
+            console.log(`📝 Added placeholder for user-provided file: ${cleanedPath}`);
         }
 
         // Send validation progress
@@ -688,6 +693,36 @@ Generate the complete ${fileInfo.type} file content for this AI/ML project:`;
         const empty = '░'.repeat(emptyLength);
 
         return `🔄 [${filled}${empty}]`;
+    }
+
+    /**
+     * Clean file name by removing descriptions and comments
+     */
+    private cleanFileName(fileName: string): string {
+        if (!fileName) return '';
+        
+        // Remove comments after # symbol
+        let cleaned = fileName.split('#')[0].trim();
+        
+        // Remove parenthetical descriptions like "(single file containing...)"
+        cleaned = cleaned.replace(/\s*\([^)]*\)\s*$/g, '');
+        
+        // Remove leading slashes
+        cleaned = cleaned.replace(/^\/+/, '');
+        
+        // Remove extra whitespace
+        cleaned = cleaned.trim();
+        
+        // Ensure we have a valid file extension
+        if (cleaned && !cleaned.includes('.')) {
+            // If no extension, try to infer from original name or skip
+            const originalExt = fileName.match(/\.([a-zA-Z0-9]+)/);
+            if (originalExt) {
+                cleaned += '.' + originalExt[1];
+            }
+        }
+        
+        return cleaned;
     }
 
     /**

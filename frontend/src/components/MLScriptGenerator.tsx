@@ -280,60 +280,76 @@ export function MLScriptGenerator() {
 
             let buffer = '';
             let lastActivity = Date.now();
-            const TIMEOUT_MS = 5000; // 5 second timeout
+            const TIMEOUT_MS = 10000; // Increased to 10 second timeout
+            let eventCount = 0;
+            let maxEvents = 1000; // Prevent infinite loops
 
             // Set up a timeout to detect if streaming stops
             const timeoutCheck = setInterval(() => {
                 const now = Date.now();
                 if (now - lastActivity > TIMEOUT_MS) {
-                    console.warn('⚠️ Streaming timeout detected, no data received for 5 seconds');
+                    console.warn('⚠️ Streaming timeout detected, no data received for 10 seconds');
                     clearInterval(timeoutCheck);
+                    // Don't throw error, just log and continue
                 }
-            }, 1000);
+            }, 2000); // Check every 2 seconds
 
-            while (true) {
-                const { done, value } = await reader.read();
+            try {
+                while (true) {
+                    // Safety check to prevent infinite loops
+                    if (eventCount > maxEvents) {
+                        console.warn('⚠️ Maximum event count reached, stopping stream processing');
+                        break;
+                    }
 
-                if (done) {
-                    console.log('✅ Streaming completed');
-                    clearInterval(timeoutCheck);
-                    break;
-                }
+                    const { done, value } = await reader.read();
 
-                lastActivity = Date.now();
-                const chunk = decoder.decode(value, { stream: true });
-                console.log('📦 Received chunk:', chunk);
+                    if (done) {
+                        console.log('✅ Streaming completed');
+                        clearInterval(timeoutCheck);
+                        break;
+                    }
 
-                buffer += chunk;
-                const lines = buffer.split('\n');
-                buffer = lines.pop() || '';
+                    lastActivity = Date.now();
+                    eventCount++;
 
-                console.log('📝 Processing lines:', lines);
+                    const chunk = decoder.decode(value, { stream: true });
+                    console.log('📦 Received chunk:', chunk.substring(0, 100) + (chunk.length > 100 ? '...' : ''));
 
-                for (const line of lines) {
-                    console.log('📄 Processing line:', line);
-                    if (line.trim() && line.startsWith('data: ')) {
-                        try {
-                            const jsonData = line.slice(6);
-                            console.log('🔍 Parsing JSON:', jsonData);
-                            const data = JSON.parse(jsonData);
-                            console.log('📨 Received stream data:', data);
+                    buffer += chunk;
+                    const lines = buffer.split('\n');
+                    buffer = lines.pop() || '';
 
-                            // Handle different message types
-                            if (data.type === 'heartbeat') {
-                                console.log('💓 Heartbeat received');
-                            } else if (data.type === 'connected') {
-                                console.log('🔗 Stream connected');
-                            } else {
-                                handleStreamUpdate(data);
+                    for (const line of lines) {
+                        if (line.trim() && line.startsWith('data: ')) {
+                            try {
+                                const jsonData = line.slice(6);
+                                const data = JSON.parse(jsonData);
+                                console.log('📨 Received stream data:', data.type, data.filename || '');
+
+                                // Handle different message types
+                                if (data.type === 'heartbeat') {
+                                    console.log('💓 Heartbeat received');
+                                } else if (data.type === 'connected') {
+                                    console.log('🔗 Stream connected');
+                                } else {
+                                    // Add small delay to prevent race conditions
+                                    setTimeout(() => handleStreamUpdate(data), 10);
+                                }
+                            } catch (e) {
+                                console.warn('Failed to parse stream data:', line.substring(0, 50), 'Error:', e);
+                                // Continue processing other lines instead of failing
                             }
-                        } catch (e) {
-                            console.warn('Failed to parse stream data:', line, 'Error:', e);
                         }
-                    } else if (line.trim()) {
-                        console.log('📨 Received non-data line:', line);
                     }
                 }
+            } catch (streamError) {
+                console.error('Stream processing error:', streamError);
+                clearInterval(timeoutCheck);
+                // Don't re-throw, handle gracefully
+                setError('Streaming connection interrupted. Generation may be incomplete.');
+            } finally {
+                clearInterval(timeoutCheck);
             }
 
             setWorkflowState('complete');
@@ -350,53 +366,73 @@ export function MLScriptGenerator() {
 
         if (data.type === 'file_start') {
             console.log('📄 File generation started:', data.filename);
-            console.log('📋 Current preview files:', previewFiles.map(f => f.filename));
 
-            // File generation started
             setPreviewFiles(prev => {
-                const updated = prev.map(f => {
-                    if (f.filename === data.filename) {
-                        console.log('✅ Found matching file, setting to generating:', f.filename);
-                        return { ...f, status: 'generating' as const };
-                    }
-                    return f;
-                });
-                console.log('📋 Updated preview files:', updated.map(f => `${f.filename}: ${f.status}`));
+                const updated = [...prev];
+                const matchIndex = findFileMatch(updated, data.filename);
+
+                if (matchIndex !== -1) {
+                    updated[matchIndex] = { ...updated[matchIndex], status: 'generating' as const };
+                    console.log('✅ Found matching file, setting to generating:', updated[matchIndex].filename);
+                } else {
+                    // Add new file if not found
+                    updated.push({
+                        filename: data.filename,
+                        content: '',
+                        language: getLanguageFromFilename(data.filename),
+                        status: 'generating' as const
+                    });
+                    console.log('➕ Added new file to preview list:', data.filename);
+                }
+
                 return updated;
             });
         } else if (data.type === 'file_complete') {
             console.log('✅ File generation completed:', data.filename);
-            console.log('📄 File content length:', data.content?.length || 0);
 
-            // File generation completed
             setPreviewFiles(prev => {
-                const updated = prev.map(f => {
-                    if (f.filename === data.filename) {
-                        console.log('✅ Found matching file, setting to complete:', f.filename);
-                        return {
-                            ...f,
-                            content: data.content,
-                            status: 'complete' as const,
-                            size: data.content?.length || 0
-                        };
-                    }
-                    return f;
-                });
-                console.log('📋 Updated preview files:', updated.map(f => `${f.filename}: ${f.status}`));
+                const updated = [...prev];
+                const matchIndex = findFileMatch(updated, data.filename);
+
+                if (matchIndex !== -1) {
+                    updated[matchIndex] = {
+                        ...updated[matchIndex],
+                        content: data.content || '',
+                        status: 'complete' as const,
+                        size: data.content?.length || 0
+                    };
+                    console.log('✅ Found matching file, setting to complete:', updated[matchIndex].filename);
+                } else {
+                    // Add completed file if not found
+                    updated.push({
+                        filename: data.filename,
+                        content: data.content || '',
+                        language: getLanguageFromFilename(data.filename),
+                        status: 'complete' as const,
+                        size: data.content?.length || 0
+                    });
+                    console.log('➕ Added completed file to preview list:', data.filename);
+                }
+
                 return updated;
             });
         } else if (data.type === 'progress') {
             console.log('📊 Progress update:', data.progress);
-            // Update overall progress
-            setLoadingProgress(data.progress);
+            if (typeof data.progress === 'number' && data.progress >= 0 && data.progress <= 100) {
+                setLoadingProgress(data.progress);
+            }
         } else if (data.type === 'error') {
             console.error('❌ Stream error:', data);
-            // Handle file generation error
-            setPreviewFiles(prev => prev.map(f =>
-                f.filename === data.filename
-                    ? { ...f, status: 'error' as const }
-                    : f
-            ));
+            setPreviewFiles(prev => {
+                const updated = [...prev];
+                const matchIndex = findFileMatch(updated, data.filename);
+
+                if (matchIndex !== -1) {
+                    updated[matchIndex] = { ...updated[matchIndex], status: 'error' as const };
+                }
+
+                return updated;
+            });
         } else {
             console.log('📨 Unknown stream update type:', data.type, data);
         }
@@ -474,7 +510,7 @@ export function MLScriptGenerator() {
     };
 
     return (
-        <div className="min-h-screen" style={{backgroundColor: '#F7F9FC'}}>
+        <div className="min-h-screen" style={{ backgroundColor: '#F7F9FC' }}>
             {/* Main Content */}
             <main className="py-6 sm:py-12 px-4 sm:px-8 lg:px-12">
                 <div className="max-w-5xl mx-auto">
@@ -548,7 +584,7 @@ export function MLScriptGenerator() {
                                 </div>
 
                                 <div className="px-6 sm:px-8 py-8">
-                                    <div className="border-2 border-black rounded-sm p-6 shadow-[3px_3px_0_0_#000]" style={{background: 'linear-gradient(to bottom right, #DCFCE7, #BBF7D0)'}}>
+                                    <div className="border-2 border-black rounded-sm p-6 shadow-[3px_3px_0_0_#000]" style={{ background: 'linear-gradient(to bottom right, #DCFCE7, #BBF7D0)' }}>
                                         <div className="flex items-start">
                                             <div className="flex-shrink-0">
                                                 <svg className="h-6 w-6 text-green-500" fill="currentColor" viewBox="0 0 20 20">
@@ -556,10 +592,10 @@ export function MLScriptGenerator() {
                                                 </svg>
                                             </div>
                                             <div className="ml-4">
-                                                <h3 className="text-lg font-semibold mb-2" style={{color: '#15803D'}}>
+                                                <h3 className="text-lg font-semibold mb-2" style={{ color: '#15803D' }}>
                                                     Complete AI Project Generated
                                                 </h3>
-                                                <div className="text-sm sm:text-base leading-relaxed" style={{color: '#166534'}}>
+                                                <div className="text-sm sm:text-base leading-relaxed" style={{ color: '#166534' }}>
                                                     <p>
                                                         Your project has been generated successfully. Download the ZIP file to get your complete project with all the files and structure as planned.
                                                     </p>
@@ -573,14 +609,14 @@ export function MLScriptGenerator() {
                                     <button
                                         onClick={handleStartOver}
                                         className="w-full inline-flex justify-center items-center px-6 py-3 border-2 border-black text-base font-medium rounded-sm text-white focus:outline-none focus:ring-2 focus:ring-offset-2 shadow-[2px_2px_0_0_#000] transform hover:-translate-y-0.5 transition-all duration-200"
-                                        style={{backgroundColor: '#2563EB'}}
+                                        style={{ backgroundColor: '#2563EB' }}
                                         onMouseEnter={(e) => {
-                                          const target = e.target as HTMLButtonElement;
-                                          target.style.backgroundColor = '#1D4ED8';
+                                            const target = e.target as HTMLButtonElement;
+                                            target.style.backgroundColor = '#1D4ED8';
                                         }}
                                         onMouseLeave={(e) => {
-                                          const target = e.target as HTMLButtonElement;
-                                          target.style.backgroundColor = '#2563EB';
+                                            const target = e.target as HTMLButtonElement;
+                                            target.style.backgroundColor = '#2563EB';
                                         }}
                                     >
                                         Generate Another Project
@@ -596,56 +632,174 @@ export function MLScriptGenerator() {
 }
 
 // Helper functions
+function findFileMatch(files: PreviewFile[], targetFilename: string): number {
+    if (!targetFilename) return -1;
+
+    // 1. Try exact match first
+    for (let i = 0; i < files.length; i++) {
+        if (files[i].filename === targetFilename) {
+            return i;
+        }
+    }
+
+    // 2. Try basename match (ignore paths)
+    const targetBasename = targetFilename.split('/').pop() || '';
+    for (let i = 0; i < files.length; i++) {
+        const fileBasename = files[i].filename.split('/').pop() || '';
+        if (fileBasename === targetBasename && fileBasename) {
+            return i;
+        }
+    }
+
+    // 3. Try cleaned filename match
+    const cleanTarget = cleanFileName(targetFilename);
+    for (let i = 0; i < files.length; i++) {
+        const cleanFile = cleanFileName(files[i].filename);
+        if (cleanFile === cleanTarget && cleanTarget) {
+            return i;
+        }
+    }
+
+    return -1; // No match found
+}
+
 function extractExpectedFiles(plan: string): string[] {
     const files = new Set<string>();
 
-    // Extract files from plan using more precise patterns
+    // Extract files from plan using comprehensive patterns
     const lines = plan.split('\n');
 
     for (const line of lines) {
-        // Match tree structure patterns like "├── path/filename.ext" or "└── filename.ext"
-        const treeMatch = line.match(/^[\s│├└─]*([a-zA-Z0-9_./\-]+\.[a-zA-Z0-9]+)(?:\s*#.*)?$/);
+        // Skip empty lines and obvious headers
+        if (!line.trim() || line.trim().startsWith('#') || line.includes('Project Structure') || line.includes('Overview')) {
+            continue;
+        }
+
+        // Pattern 1: Tree structure patterns like "├── path/filename.ext" or "└── filename.ext"
+        const treeMatch = line.match(/^[\s│├└─]*([a-zA-Z0-9_./\-]+\.[a-zA-Z0-9]+)(?:\s*[#(].*)?$/);
         if (treeMatch) {
             let filePath = treeMatch[1].trim();
-            // Clean the file path: remove comments, leading slashes, extra whitespace
-            filePath = filePath.split('#')[0].trim().replace(/^\/+/, '');
-            if (filePath && filePath.includes('.')) {
+            filePath = cleanFileName(filePath);
+            if (filePath && filePath.includes('.') && isValidFileExtension(filePath)) {
                 files.add(filePath);
+                continue;
             }
         }
 
-        // Match files mentioned in text like "src/train.py" or "`path/file.py`"
-        // But only if they're not already captured by tree structure
-        const fileMatches = line.match(/`?([a-zA-Z0-9_./\-]+\.(py|js|ts|json|md|txt|yml|yaml|dockerfile|sh))`?/g);
-        if (fileMatches && !line.match(/^[\s│├└─]/)) { // Only if not a tree structure line
-            fileMatches.forEach(match => {
+        // Pattern 2: Bullet points like "- src/train.py" or "* model.py"
+        const bulletMatch = line.match(/^[\s]*[-*•]\s+([a-zA-Z0-9_./\-]+\.[a-zA-Z0-9]+)(?:\s*[#(].*)?$/);
+        if (bulletMatch) {
+            let filePath = bulletMatch[1].trim();
+            filePath = cleanFileName(filePath);
+            if (filePath && filePath.includes('.') && isValidFileExtension(filePath)) {
+                files.add(filePath);
+                continue;
+            }
+        }
+
+        // Pattern 3: Numbered lists like "1. train.py" or "2) model.py"
+        const numberedMatch = line.match(/^[\s]*\d+[.)]\s+([a-zA-Z0-9_./\-]+\.[a-zA-Z0-9]+)(?:\s*[#(].*)?$/);
+        if (numberedMatch) {
+            let filePath = numberedMatch[1].trim();
+            filePath = cleanFileName(filePath);
+            if (filePath && filePath.includes('.') && isValidFileExtension(filePath)) {
+                files.add(filePath);
+                continue;
+            }
+        }
+
+        // Pattern 4: Files mentioned in backticks like "`src/train.py`"
+        const backtickMatches = line.match(/`([a-zA-Z0-9_./\-]+\.[a-zA-Z0-9]+)`/g);
+        if (backtickMatches && !line.match(/^[\s│├└─]/)) { // Only if not a tree structure line
+            backtickMatches.forEach(match => {
                 let cleanFile = match.replace(/[`]/g, '').trim();
-                // Clean the file path: remove comments, leading slashes
-                cleanFile = cleanFile.split('#')[0].trim().replace(/^\/+/, '');
-                if (cleanFile && cleanFile.includes('.')) {
+                cleanFile = cleanFileName(cleanFile);
+                if (cleanFile && cleanFile.includes('.') && isValidFileExtension(cleanFile)) {
+                    files.add(cleanFile);
+                }
+            });
+            continue;
+        }
+
+        // Pattern 5: Files mentioned in quotes like "train.py" or 'model.py'
+        const quotedMatches = line.match(/["']([a-zA-Z0-9_./\-]+\.[a-zA-Z0-9]+)["']/g);
+        if (quotedMatches) {
+            quotedMatches.forEach(match => {
+                let cleanFile = match.replace(/["']/g, '').trim();
+                cleanFile = cleanFileName(cleanFile);
+                if (cleanFile && cleanFile.includes('.') && isValidFileExtension(cleanFile)) {
+                    files.add(cleanFile);
+                }
+            });
+            continue;
+        }
+
+        // Pattern 6: Files mentioned with common extensions (more permissive)
+        const extensionMatches = line.match(/([a-zA-Z0-9_./\-]+\.(py|js|ts|json|md|txt|yml|yaml|dockerfile|sh|html|css|jsx|tsx|vue|php|rb|go|rs|java|cpp|c|h))/g);
+        if (extensionMatches && !line.match(/^[\s│├└─*-]/) && !line.includes('http')) { // Avoid URLs and structured lists
+            extensionMatches.forEach(match => {
+                let cleanFile = match.trim();
+                cleanFile = cleanFileName(cleanFile);
+                if (cleanFile && cleanFile.includes('.') && isValidFileExtension(cleanFile)) {
                     files.add(cleanFile);
                 }
             });
         }
     }
 
-    // Remove duplicates where we have both "file.py" and "path/file.py"
+    // Simple deduplication: prefer files with paths over bare filenames
     const extractedFiles = Array.from(files);
-    const deduplicatedFiles = extractedFiles.filter(file => {
-        const filename = file.split('/').pop();
-        // Keep the file if there's no other file with the same name but different path
-        const duplicates = extractedFiles.filter(f => f.split('/').pop() === filename);
-        if (duplicates.length > 1) {
-            // If there are duplicates, prefer the one with a path (more specific)
-            return file.includes('/') || duplicates.every(d => !d.includes('/'));
+    const finalFiles = new Map<string, string>();
+
+    extractedFiles.forEach(file => {
+        const basename = file.split('/').pop() || '';
+        if (!finalFiles.has(basename) || file.includes('/')) {
+            finalFiles.set(basename, file);
         }
-        return true;
     });
 
-    console.log('📄 Frontend extracted files from plan:', deduplicatedFiles);
-    console.log('📄 Removed duplicates:', extractedFiles.length - deduplicatedFiles.length);
+    const result = Array.from(finalFiles.values());
+    console.log('📄 Frontend extracted files from plan:', result);
+    return result;
+}
 
-    return deduplicatedFiles;
+function isValidFileExtension(fileName: string): boolean {
+    if (!fileName || !fileName.includes('.')) return false;
+
+    const ext = fileName.split('.').pop()?.toLowerCase();
+    const validExtensions = [
+        'py', 'js', 'ts', 'jsx', 'tsx', 'vue', 'php', 'rb', 'go', 'rs', 'java', 'cpp', 'c', 'h',
+        'json', 'yaml', 'yml', 'toml', 'ini', 'cfg', 'conf',
+        'md', 'txt', 'rst', 'html', 'css', 'scss', 'sass',
+        'dockerfile', 'sh', 'bat', 'ps1',
+        'sql', 'graphql', 'proto'
+    ];
+
+    return validExtensions.includes(ext || '');
+}
+
+function cleanFileName(fileName: string): string {
+    if (!fileName) return '';
+
+    // Remove comments after # symbol
+    let cleaned = fileName.split('#')[0].trim();
+
+    // Remove parenthetical descriptions like "(single file containing...)"
+    cleaned = cleaned.replace(/\s*\([^)]*\)\s*$/g, '');
+
+    // Remove leading slashes
+    cleaned = cleaned.replace(/^\/+/, '');
+
+    // Remove extra whitespace
+    cleaned = cleaned.trim();
+
+    // Ensure we have a valid file extension
+    if (cleaned && !cleaned.includes('.')) {
+        // If no extension, skip this file as it's likely not a real file
+        return '';
+    }
+
+    return cleaned;
 }
 
 function getLanguageFromFilename(filename: string): string {

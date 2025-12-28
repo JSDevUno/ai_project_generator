@@ -312,6 +312,14 @@ CRITICAL RULES:
 2. If the user says "it must contain X, Y, Z", generate ONLY X, Y, Z (plus any folders they mention)
 3. Do NOT add "helpful" extra files unless explicitly requested
 4. Do NOT assume they want additional utilities, configs, or scripts
+5. IMPORTANT: Use ONLY clean file names without descriptions or comments in parentheses
+
+FILE NAMING RULES:
+- Use simple, clean file names: "train.py" NOT "train.py (main training script)"
+- Use standard extensions: .py, .md, .txt, .yml, .json
+- No parenthetical descriptions in file names
+- No comments after file names in the structure
+- Example: "src/model.py" NOT "src/model.py (contains the neural network)"
 
 NEVER INCLUDE THESE USER-PROVIDED FILES:
 - Video files (.mp4, .avi, .mov) - users provide their own test videos
@@ -336,7 +344,7 @@ If user says "simple only" or "no deployment", create a MINIMAL project with jus
 Generate a project plan that includes EXACTLY what the user described, nothing more.
 
 Focus on:
-- Project structure with only the requested files/folders
+- Project structure with only the requested files/folders (use clean names)
 - Implementation details for each requested component
 - Technical specifications that fulfill their requirements
 
