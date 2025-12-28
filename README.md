@@ -2,8 +2,6 @@
 
 > Generate complete, production-ready AI/ML projects with real-time progress tracking
 
-[![Deploy with Vercel](https://vercel.com/button)](https://vercel.com/new/clone?repository-url=https://github.com/JSDevUno/ai_project_generator)
-
 ## ✨ Features
 
 ### 🎯 **Real-Time Progress Display**
