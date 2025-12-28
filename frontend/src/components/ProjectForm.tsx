@@ -65,10 +65,10 @@ export function ProjectForm({ onSubmit }: ProjectFormProps) {
 
   const getRateLimitStatus = () => {
     if (!rateLimitInfo) return null;
-    
+
     const { search } = rateLimitInfo;
     const percentage = (search.remaining / search.limit) * 100;
-    
+
     if (percentage > 50) {
       return { color: 'green', status: 'Good' };
     } else if (percentage > 20) {
@@ -192,23 +192,23 @@ export function ProjectForm({ onSubmit }: ProjectFormProps) {
 
   return (
     <div className="w-full px-4 sm:px-0">
-      <div className="bg-white rounded-lg p-4 sm:p-8 shadow-lg">
-        <div className="space-y-6 sm:space-y-8">
+      <div style={{ backgroundColor: '#FFFFFF' }} className="rounded-sm p-6 sm:p-10 border-2 border-black ring-1 ring-gray-300 ring-inset shadow-[4px_4px_0_0_#000]">
+        <div className="space-y-8 sm:space-y-10">
           <div>
-            <h2 className="text-xl sm:text-2xl font-semibold text-gray-900 mb-2">
+            <h2 className="text-2xl sm:text-3xl font-bold mb-3" style={{ color: '#0F172A' }}>
               Create AI Project
             </h2>
-            <p className="text-sm sm:text-base text-gray-600">
+            <p className="text-base sm:text-lg leading-relaxed" style={{ color: '#475569' }}>
               Describe any AI project you want to build - from computer vision to NLP,
               traditional ML to deep learning. The system will generate a complete project
               structure with training scripts, inference code, and documentation.
             </p>
           </div>
 
-          <form onSubmit={handleSubmit} className="space-y-4 sm:space-y-6">
+          <form onSubmit={handleSubmit} className="space-y-6 sm:space-y-8">
             {/* Project Name */}
             <div>
-              <label htmlFor="projectName" className="block text-sm font-medium text-gray-700 mb-2">
+              <label htmlFor="projectName" className="block text-sm font-semibold mb-3" style={{ color: '#0F172A' }}>
                 Project Name
               </label>
               <input
@@ -217,16 +217,27 @@ export function ProjectForm({ onSubmit }: ProjectFormProps) {
                 value={projectName}
                 onChange={(e) => setProjectName(e.target.value)}
                 placeholder="e.g., image_classifier, sentiment_analyzer"
-                className="w-full px-3 sm:px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500 transition-colors text-base"
+                className="w-full px-4 sm:px-5 py-4 border-2 border-black rounded-sm focus:ring-2 transition-all duration-200 text-base font-medium shadow-[2px_2px_0_0_#000]"
+                style={{ backgroundColor: '#F7F9FC', color: '#0F172A' }}
+                onFocus={(e) => {
+                  const target = e.target as HTMLInputElement;
+                  target.style.backgroundColor = '#FFFFFF';
+                  target.style.borderColor = '#2563EB';
+                }}
+                onBlur={(e) => {
+                  const target = e.target as HTMLInputElement;
+                  target.style.backgroundColor = '#F7F9FC';
+                  target.style.borderColor = '#000000';
+                }}
               />
-              <p className="text-xs text-gray-500 mt-2">
+              <p className="text-xs mt-2 ml-1" style={{ color: '#475569' }}>
                 Use lowercase with underscores (will be used for folder naming)
               </p>
             </div>
 
             {/* Instruction */}
             <div>
-              <label htmlFor="instruction" className="block text-sm font-medium text-gray-700 mb-2">
+              <label htmlFor="instruction" className="block text-sm font-semibold mb-3" style={{ color: '#0F172A' }}>
                 Project Description
               </label>
               <textarea
@@ -239,107 +250,117 @@ export function ProjectForm({ onSubmit }: ProjectFormProps) {
 • 'Develop a GAN for generating synthetic medical images'
 • 'Create a reinforcement learning agent for stock trading'
 • 'Build a speech recognition system using Whisper'"
-                rows={5}
-                className="w-full px-3 sm:px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500 resize-vertical transition-colors text-base"
+                rows={6}
+                className="w-full px-4 sm:px-5 py-4 border-2 border-black rounded-sm resize-vertical transition-all duration-200 text-base leading-relaxed shadow-[2px_2px_0_0_#000]"
+                style={{ backgroundColor: '#F7F9FC', color: '#0F172A' }}
+                onFocus={(e) => {
+                  const target = e.target as HTMLTextAreaElement;
+                  target.style.backgroundColor = '#FFFFFF';
+                  target.style.borderColor = '#2563EB';
+                }}
+                onBlur={(e) => {
+                  const target = e.target as HTMLTextAreaElement;
+                  target.style.backgroundColor = '#F7F9FC';
+                  target.style.borderColor = '#000000';
+                }}
               />
-              <p className="text-xs text-gray-500 mt-2">
+              <p className="text-xs mt-2 ml-1" style={{ color: '#475569' }}>
                 Be as specific as possible about your requirements, data types, and desired outcomes
               </p>
             </div>
 
             {/* GitHub Search Toggle */}
             <div>
-              <div className="flex items-center space-x-3 mb-2">
+              <div className="flex items-center space-x-3 mb-3">
                 <input
                   type="checkbox"
                   id="githubSearch"
                   checked={enableGitHubSearch}
                   onChange={(e) => setEnableGitHubSearch(e.target.checked)}
-                  className="h-4 w-4 text-blue-600 focus:ring-blue-500 border-gray-300 rounded"
+                  className="h-5 w-5 text-blue-600 focus:ring-blue-500 border-gray-300 rounded-md"
                 />
-                <label htmlFor="githubSearch" className="flex items-center text-sm font-medium text-gray-700">
+                <label htmlFor="githubSearch" className="flex items-center text-sm font-semibold" style={{ color: '#0F172A' }}>
                   <Search className="w-4 h-4 mr-2" />
                   Search GitHub repositories for reference implementations
                 </label>
               </div>
-              <div className="ml-7 p-3 bg-gray-50 rounded-lg">
-                <div className="text-xs text-gray-600">
-                  <strong>When enabled:</strong> The system will search GitHub for relevant repositories, 
+              <div className="ml-8 p-4 rounded-sm border-2 border-black ring-1 ring-gray-300 ring-inset shadow-[4px_4px_0_0_#000]" style={{ background: 'linear-gradient(to bottom right, #F7F9FC, #E5E7EB)' }}>
+                <div className="text-sm leading-relaxed" style={{ color: '#0F172A' }}>
+                  <strong>When enabled:</strong> The system will search GitHub for relevant repositories,
                   analyze their implementations, and incorporate best practices into your project plan.
                 </div>
-                <div className="text-xs text-gray-500 mt-1">
+                <div className="text-xs mt-2" style={{ color: '#475569' }}>
                   This adds ~30-60 seconds to generation time but provides enhanced project quality.
                 </div>
                 {enableGitHubSearch && (
-                  <div className="mt-2 p-2 bg-blue-50 border border-blue-200 rounded text-xs text-blue-700 flex items-center">
-                    <Sparkles className="w-3 h-3 mr-1 flex-shrink-0" />
+                  <div className="mt-3 p-3 border-2 border-black rounded-sm text-sm flex items-center shadow-[1px_1px_0_0_#000]" style={{ backgroundColor: '#DBEAFE', color: '#1E40AF' }}>
+                    <Sparkles className="w-4 h-4 mr-2 flex-shrink-0" />
                     <span><strong>Enhanced mode enabled:</strong> Your plan will include insights from top-rated repositories in your domain.</span>
                   </div>
                 )}
-                
+
                 {/* GitHub Rate Limit Indicator */}
                 {enableGitHubSearch && (
-                  <div className="mt-3 border-t border-gray-200 pt-3">
-                    <div className="flex items-center justify-between mb-2">
-                      <span className="text-xs font-medium text-gray-700">GitHub API Status</span>
+                  <div className="mt-4 border-t border-gray-200 pt-4">
+                    <div className="flex items-center justify-between mb-3">
+                      <span className="text-sm font-semibold text-gray-700">GitHub API Status</span>
                       {rateLimitLoading && (
-                        <div className="flex items-center text-xs text-gray-500">
-                          <div className="animate-spin rounded-full h-3 w-3 border-b-2 border-gray-500 mr-1"></div>
+                        <div className="flex items-center text-sm text-gray-500">
+                          <div className="animate-spin rounded-full h-4 w-4 border-b-2 border-gray-500 mr-2"></div>
                           Checking...
                         </div>
                       )}
                     </div>
-                    
+
                     {rateLimitInfo && !rateLimitLoading && (
-                      <div className="space-y-2">
+                      <div className="space-y-3">
                         {/* Search API Limits */}
-                        <div className="flex items-center justify-between">
+                        <div className="flex items-center justify-between p-3 bg-white rounded-sm border-2 border-black shadow-[1px_1px_0_0_#000]">
                           <div className="flex items-center">
-                            <Search className="w-3 h-3 mr-1 text-gray-500" />
-                            <span className="text-xs text-gray-600">Search API</span>
+                            <Search className="w-4 h-4 mr-2 text-gray-500" />
+                            <span className="text-sm text-gray-700 font-medium">Search API</span>
                           </div>
-                          <div className="flex items-center space-x-2">
-                            <div className={`w-2 h-2 rounded-full ${
-                              getRateLimitStatus()?.color === 'green' ? 'bg-green-500' :
+                          <div className="flex items-center space-x-3">
+                            <div className={`w-3 h-3 rounded-full ${getRateLimitStatus()?.color === 'green' ? 'bg-green-500' :
                               getRateLimitStatus()?.color === 'yellow' ? 'bg-yellow-500' : 'bg-red-500'
-                            }`}></div>
-                            <span className="text-xs font-medium">
+                              }`}></div>
+                            <span className="text-sm font-semibold">
                               {rateLimitInfo.search.remaining}/{rateLimitInfo.search.limit}
                             </span>
                           </div>
                         </div>
-                        
+
                         {/* Reset Time */}
                         {rateLimitInfo.search.remaining < rateLimitInfo.search.limit && (
-                          <div className="flex items-center justify-between text-xs text-gray-500">
+                          <div className="flex items-center justify-between text-sm text-gray-500 px-3">
                             <div className="flex items-center">
-                              <Clock className="w-3 h-3 mr-1" />
+                              <Clock className="w-4 h-4 mr-2" />
                               <span>Resets in</span>
                             </div>
-                            <span>{formatResetTime(rateLimitInfo.search.resetIn)}</span>
+                            <span className="font-medium">{formatResetTime(rateLimitInfo.search.resetIn)}</span>
                           </div>
                         )}
-                        
+
                         {/* Warning for low limits */}
                         {rateLimitInfo.search.remaining < 5 && (
-                          <div className="flex items-center p-2 bg-red-50 border border-red-200 rounded text-xs text-red-700">
-                            <AlertTriangle className="w-3 h-3 mr-1 flex-shrink-0" />
+                          <div className="flex items-center p-3 bg-red-50 border-2 border-black rounded-sm text-sm text-red-700 shadow-[1px_1px_0_0_#000]">
+                            <AlertTriangle className="w-4 h-4 mr-2 flex-shrink-0" />
                             <span>Low API quota. GitHub search may be limited.</span>
                           </div>
                         )}
-                        
+
                         {/* Info for good limits */}
                         {rateLimitInfo.search.remaining >= 10 && (
-                          <div className="text-xs text-green-700 bg-green-50 border border-green-200 rounded p-2 flex items-center">
-                            <CheckCircle className="w-3 h-3 mr-1 flex-shrink-0" />
+                          <div className="text-sm text-green-700 bg-green-50 border-2 border-black rounded-sm p-3 flex items-center shadow-[1px_1px_0_0_#000]">
+                            <CheckCircle className="w-4 h-4 mr-2 flex-shrink-0" />
                             <span>Sufficient API quota for GitHub search</span>
                           </div>
                         )}
                       </div>
                     )}
-                    
+
                     {!rateLimitInfo && !rateLimitLoading && (
-                      <div className="text-xs text-gray-500 italic">
+                      <div className="text-sm text-gray-500 italic p-3 bg-gray-50 rounded-sm border-2 border-black shadow-[1px_1px_0_0_#000]">
                         Unable to check GitHub API limits
                       </div>
                     )}
@@ -350,42 +371,53 @@ export function ProjectForm({ onSubmit }: ProjectFormProps) {
 
             {/* Model Selection */}
             <div>
-              <label htmlFor="model" className="block text-sm font-medium text-gray-700 mb-2">
+              <label htmlFor="model" className="block text-sm font-semibold mb-3" style={{ color: '#0F172A' }}>
                 AI Model Selection
               </label>
-              
+
               {/* Custom Dropdown with Lucide Icons */}
               <div className="relative">
                 <button
                   type="button"
                   onClick={() => setIsDropdownOpen(!isDropdownOpen)}
-                  className="w-full px-3 sm:px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500 transition-colors text-base bg-white text-left flex items-center justify-between"
+                  className="w-full px-4 sm:px-5 py-4 border-2 border-black rounded-sm transition-all duration-200 text-base font-medium text-left flex items-center justify-between shadow-[2px_2px_0_0_#000]"
+                  style={{ backgroundColor: '#F7F9FC', color: '#0F172A' }}
+                  onFocus={(e) => {
+                    const target = e.target as HTMLButtonElement;
+                    target.style.backgroundColor = '#FFFFFF';
+                    target.style.borderColor = '#2563EB';
+                  }}
+                  onBlur={(e) => {
+                    const target = e.target as HTMLButtonElement;
+                    target.style.backgroundColor = '#F7F9FC';
+                    target.style.borderColor = '#000000';
+                  }}
                 >
                   <div className="flex items-center">
                     {(() => {
                       const selectedModel = modelOptions.find(opt => opt.value === model);
                       if (selectedModel?.icon === 'crown') {
-                        return <Crown className="w-4 h-4 text-yellow-500 mr-2" />;
+                        return <Crown className="w-5 h-5 text-yellow-500 mr-3" />;
                       } else if (selectedModel?.icon === 'trophy') {
-                        return <Trophy className="w-4 h-4 text-orange-500 mr-2" />;
+                        return <Trophy className="w-5 h-5 text-orange-500 mr-3" />;
                       } else if (selectedModel?.icon === 'award') {
-                        return <Award className="w-4 h-4 text-purple-500 mr-2" />;
+                        return <Award className="w-5 h-5 text-purple-500 mr-3" />;
                       } else if (selectedModel?.icon === 'medal') {
-                        return <Medal className="w-4 h-4 text-blue-500 mr-2" />;
+                        return <Medal className="w-5 h-5 text-blue-500 mr-3" />;
                       } else if (selectedModel?.status === 'verified') {
-                        return <CheckCircle className="w-4 h-4 text-green-500 mr-2" />;
+                        return <CheckCircle className="w-5 h-5 text-green-500 mr-3" />;
                       } else if (selectedModel?.status === 'working') {
-                        return <Star className="w-4 h-4 text-blue-500 mr-2" />;
+                        return <Star className="w-5 h-5 text-blue-500 mr-3" />;
                       }
                       return null;
                     })()}
                     <span>{modelOptions.find(opt => opt.value === model)?.label} - {modelOptions.find(opt => opt.value === model)?.cost}</span>
                   </div>
-                  <ChevronDown className={`w-4 h-4 text-gray-500 transition-transform ${isDropdownOpen ? 'rotate-180' : ''}`} />
+                  <ChevronDown className={`w-5 h-5 text-gray-500 transition-transform duration-200 ${isDropdownOpen ? 'rotate-180' : ''}`} />
                 </button>
-                
+
                 {isDropdownOpen && (
-                  <div className="absolute z-10 w-full mt-1 bg-white border border-gray-300 rounded-lg shadow-lg max-h-60 overflow-y-auto">
+                  <div className="absolute z-10 w-full mt-2 border-2 border-black rounded-sm shadow-[2px_2px_0_0_#000] max-h-64 overflow-y-auto" style={{ backgroundColor: '#FFFFFF' }}>
                     {modelOptions.map((option) => (
                       <button
                         key={option.value}
@@ -394,66 +426,65 @@ export function ProjectForm({ onSubmit }: ProjectFormProps) {
                           setModel(option.value as ModelType);
                           setIsDropdownOpen(false);
                         }}
-                        className={`w-full px-3 sm:px-4 py-3 text-left hover:bg-gray-50 flex items-center transition-colors ${
-                          model === option.value ? 'bg-blue-50 text-blue-700' : 'text-gray-700'
-                        }`}
+                        className={`w-full px-4 sm:px-5 py-4 text-left hover:bg-gray-50 flex items-center transition-all duration-200 ${model === option.value ? 'bg-blue-50 text-blue-700 border-l-4 border-blue-500' : 'text-gray-700'
+                          }`}
                       >
-                        {option.icon === 'crown' && <Crown className="w-4 h-4 text-yellow-500 mr-2" />}
-                        {option.icon === 'trophy' && <Trophy className="w-4 h-4 text-orange-500 mr-2" />}
-                        {option.icon === 'award' && <Award className="w-4 h-4 text-purple-500 mr-2" />}
-                        {option.icon === 'medal' && <Medal className="w-4 h-4 text-blue-500 mr-2" />}
-                        {!option.icon && option.status === 'verified' && <CheckCircle className="w-4 h-4 text-green-500 mr-2" />}
-                        {!option.icon && option.status === 'working' && <Star className="w-4 h-4 text-blue-500 mr-2" />}
+                        {option.icon === 'crown' && <Crown className="w-5 h-5 text-yellow-500 mr-3" />}
+                        {option.icon === 'trophy' && <Trophy className="w-5 h-5 text-orange-500 mr-3" />}
+                        {option.icon === 'award' && <Award className="w-5 h-5 text-purple-500 mr-3" />}
+                        {option.icon === 'medal' && <Medal className="w-5 h-5 text-blue-500 mr-3" />}
+                        {!option.icon && option.status === 'verified' && <CheckCircle className="w-5 h-5 text-green-500 mr-3" />}
+                        {!option.icon && option.status === 'working' && <Star className="w-5 h-5 text-blue-500 mr-3" />}
                         <div className="flex-1">
-                          <div className="font-medium">{option.label}</div>
-                          <div className="text-xs text-gray-500">{option.cost}</div>
+                          <div className="font-semibold">{option.label}</div>
+                          <div className="text-sm text-gray-500">{option.cost}</div>
                         </div>
                       </button>
                     ))}
                   </div>
                 )}
               </div>
-              <div className="mt-2 p-3 bg-gray-50 rounded-lg">
-                <div className="flex items-center text-xs sm:text-sm text-gray-700">
+              <div className="mt-3 p-4 rounded-sm border-2 border-black shadow-[4px_4px_0_0_#000]" style={{ background: 'linear-gradient(to bottom right, #F7F9FC, #E5E7EB)' }}>
+                <div className="flex items-center text-sm sm:text-base text-gray-700 font-medium">
                   {(() => {
                     const selectedModel = modelOptions.find(opt => opt.value === model);
                     if (selectedModel?.icon === 'crown') {
-                      return <Crown className="w-4 h-4 text-yellow-500 mr-2" />;
+                      return <Crown className="w-5 h-5 text-yellow-500 mr-3" />;
                     } else if (selectedModel?.icon === 'trophy') {
-                      return <Trophy className="w-4 h-4 text-orange-500 mr-2" />;
+                      return <Trophy className="w-5 h-5 text-orange-500 mr-3" />;
                     } else if (selectedModel?.icon === 'award') {
-                      return <Award className="w-4 h-4 text-purple-500 mr-2" />;
+                      return <Award className="w-5 h-5 text-purple-500 mr-3" />;
                     } else if (selectedModel?.icon === 'medal') {
-                      return <Medal className="w-4 h-4 text-blue-500 mr-2" />;
+                      return <Medal className="w-5 h-5 text-blue-500 mr-3" />;
                     } else if (selectedModel?.status === 'verified') {
-                      return <CheckCircle className="w-4 h-4 text-green-500 mr-2" />;
+                      return <CheckCircle className="w-5 h-5 text-green-500 mr-3" />;
                     } else if (selectedModel?.status === 'working') {
-                      return <Star className="w-4 h-4 text-blue-500 mr-2" />;
+                      return <Star className="w-5 h-5 text-blue-500 mr-3" />;
                     }
                     return null;
                   })()}
                   <strong>{modelOptions.find(opt => opt.value === model)?.label}</strong>
                 </div>
-                <div className="text-xs text-gray-600 mt-1">
+                <div className="text-sm text-gray-600 mt-2 leading-relaxed">
                   {modelOptions.find(opt => opt.value === model)?.description}
                 </div>
-                <div className="flex items-center justify-between mt-2">
-                  <span className={`inline-flex px-2 py-1 rounded-full text-xs font-medium ${modelOptions.find(opt => opt.value === model)?.cost === 'Free'
+                <div className="flex items-center justify-between mt-3">
+                  <span className={`inline-flex px-3 py-1 rounded-full text-sm font-semibold ${modelOptions.find(opt => opt.value === model)?.cost === 'Free'
                     ? 'bg-green-100 text-green-800'
                     : 'bg-orange-100 text-orange-800'
                     }`}>
                     {modelOptions.find(opt => opt.value === model)?.cost}
                   </span>
-                  <div className="flex items-center text-xs">
+                  <div className="flex items-center text-sm">
                     {modelOptions.find(opt => opt.value === model)?.status === 'verified' && (
-                      <span className="flex items-center text-green-600">
-                        <CheckCircle className="w-3 h-3 mr-1" />
+                      <span className="flex items-center text-green-600 font-medium">
+                        <CheckCircle className="w-4 h-4 mr-1" />
                         Verified Available
                       </span>
                     )}
                     {modelOptions.find(opt => opt.value === model)?.status === 'working' && (
-                      <span className="flex items-center text-blue-600">
-                        <Star className="w-3 h-3 mr-1" />
+                      <span className="flex items-center text-blue-600 font-medium">
+                        <Star className="w-4 h-4 mr-1" />
                         Confirmed Working
                       </span>
                     )}
@@ -463,16 +494,33 @@ export function ProjectForm({ onSubmit }: ProjectFormProps) {
             </div>
 
             {/* Submit Button */}
-            <div className="flex justify-start pt-4 sm:pt-6">
+            <div className="flex justify-start pt-6 sm:pt-8">
               <button
                 type="submit"
                 disabled={!isValid}
-                className={`w-full sm:w-auto px-6 py-3 text-sm font-medium rounded-lg transition-colors flex items-center justify-center ${isValid
-                  ? 'bg-blue-600 text-white hover:bg-blue-700 focus:ring-2 focus:ring-blue-500 focus:ring-offset-2'
-                  : 'bg-gray-100 text-gray-400 cursor-not-allowed'
+                className={`w-full sm:w-auto px-8 py-4 text-base font-semibold rounded-sm transition-all duration-200 flex items-center justify-center transform ${isValid
+                  ? 'text-white hover:-translate-y-0.5 focus:ring-2 focus:ring-offset-2 shadow-[2px_2px_0_0_#000]'
+                  : 'cursor-not-allowed shadow-[2px_2px_0_0_#000]'
                   }`}
+                style={{
+                  backgroundColor: isValid ? '#2563EB' : '#E5E7EB',
+                  color: isValid ? '#FFFFFF' : '#475569',
+                  borderColor: '#000000'
+                }}
+                onMouseEnter={(e) => {
+                  if (isValid) {
+                    const target = e.target as HTMLButtonElement;
+                    target.style.backgroundColor = '#1D4ED8';
+                  }
+                }}
+                onMouseLeave={(e) => {
+                  if (isValid) {
+                    const target = e.target as HTMLButtonElement;
+                    target.style.backgroundColor = '#2563EB';
+                  }
+                }}
               >
-                {enableGitHubSearch && <Search className="w-4 h-4 mr-2" />}
+                {enableGitHubSearch && <Search className="w-5 h-5 mr-3" />}
                 {enableGitHubSearch ? 'Generate AI Project Plan with GitHub Search' : 'Generate AI Project Plan'}
               </button>
             </div>
