@@ -1,11 +1,11 @@
-import { MLScriptGenerator } from './components/MLScriptGenerator'
+import { ModeSelector } from './components/ModeSelector'
 import { ErrorBoundary } from './components/ErrorBoundary'
 import './App.css'
 
 function App() {
   return (
     <ErrorBoundary>
-      <MLScriptGenerator />
+      <ModeSelector />
     </ErrorBoundary>
   )
 }

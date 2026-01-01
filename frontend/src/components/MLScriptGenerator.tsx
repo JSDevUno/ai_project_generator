@@ -510,123 +510,120 @@ export function MLScriptGenerator() {
     };
 
     return (
-        <div className="min-h-screen" style={{ backgroundColor: '#F7F9FC' }}>
-            {/* Main Content */}
-            <main className="py-6 sm:py-12 px-4 sm:px-8 lg:px-12">
-                <div className="max-w-5xl mx-auto">
-                    {error && (
-                        <div className="mb-6 sm:mb-10 p-6 sm:p-8 bg-red-50 border-2 border-black rounded-sm shadow-[4px_4px_0_0_#000] transition-shadow duration-300 backdrop-blur-sm">
-                            <div className="flex items-center">
-                                <div className="flex-shrink-0">
-                                    <svg className="w-6 h-6 sm:w-7 sm:h-7 text-red-400" fill="currentColor" viewBox="0 0 20 20">
-                                        <path fillRule="evenodd" d="M10 18a8 8 0 100-16 8 8 0 000 16zM8.707 7.293a1 1 0 00-1.414 1.414L8.586 10l-1.293 1.293a1 1 0 101.414 1.414L10 11.414l1.293 1.293a1 1 0 001.414-1.414L11.414 10l1.293-1.293a1 1 0 00-1.414-1.414L10 8.586 8.707 7.293z" clipRule="evenodd" />
-                                    </svg>
-                                </div>
-                                <div className="ml-4 sm:ml-5">
-                                    <p className="text-sm sm:text-base text-red-800 font-semibold">
-                                        {error}
-                                    </p>
-                                </div>
+        <div className="py-6 sm:py-8 px-4 sm:px-8 lg:px-12">
+            <div className="max-w-5xl mx-auto">
+                {error && (
+                    <div className="mb-6 sm:mb-10 p-6 sm:p-8 bg-red-50 border-2 border-black rounded-sm shadow-[4px_4px_0_0_#000] transition-shadow duration-300 backdrop-blur-sm">
+                        <div className="flex items-center">
+                            <div className="flex-shrink-0">
+                                <svg className="w-6 h-6 sm:w-7 sm:h-7 text-red-400" fill="currentColor" viewBox="0 0 20 20">
+                                    <path fillRule="evenodd" d="M10 18a8 8 0 100-16 8 8 0 000 16zM8.707 7.293a1 1 0 00-1.414 1.414L8.586 10l-1.293 1.293a1 1 0 101.414 1.414L10 11.414l1.293 1.293a1 1 0 001.414-1.414L11.414 10l1.293-1.293a1 1 0 00-1.414-1.414L10 8.586 8.707 7.293z" clipRule="evenodd" />
+                                </svg>
+                            </div>
+                            <div className="ml-4 sm:ml-5">
+                                <p className="text-sm sm:text-base text-red-800 font-semibold">
+                                    {error}
+                                </p>
                             </div>
                         </div>
-                    )}
+                    </div>
+                )}
 
-                    {isLoading && workflowState !== 'preview' && workflowState !== 'complete' && (
-                        <LoadingSpinner
-                            stage={loadingStage}
-                            progress={loadingProgress}
-                            sessionId={progressSessionId}
-                            isRealTime={loadingStage === 'project'}
-                        />
-                    )}
+                {isLoading && workflowState !== 'preview' && workflowState !== 'complete' && (
+                    <LoadingSpinner
+                        stage={loadingStage}
+                        progress={loadingProgress}
+                        sessionId={progressSessionId}
+                        isRealTime={loadingStage === 'project'}
+                    />
+                )}
 
-                    {workflowState === 'input' && !isLoading && (
-                        <ProjectForm onSubmit={handleGeneratePlan} />
-                    )}
+                {workflowState === 'input' && !isLoading && (
+                    <ProjectForm onSubmit={handleGeneratePlan} />
+                )}
 
-                    {workflowState === 'plan' && generatedPlan && !isLoading && (
-                        <PlanDisplay
-                            plan={generatedPlan}
-                            onApprove={handleApprovePlan}
-                            onRethink={handleRethinkPlan}
-                        />
-                    )}
+                {workflowState === 'plan' && generatedPlan && !isLoading && (
+                    <PlanDisplay
+                        plan={generatedPlan}
+                        onApprove={handleApprovePlan}
+                        onRethink={handleRethinkPlan}
+                    />
+                )}
 
-                    {(workflowState === 'preview' || workflowState === 'complete') && (
-                        <CodePreview
-                            files={previewFiles}
-                            onDownloadAll={handleDownloadAll}
-                            isGenerating={workflowState === 'preview' && isLoading}
-                        />
-                    )}
+                {(workflowState === 'preview' || workflowState === 'complete') && (
+                    <CodePreview
+                        files={previewFiles}
+                        onDownloadAll={handleDownloadAll}
+                        isGenerating={workflowState === 'preview' && isLoading}
+                    />
+                )}
 
-                    {workflowState === 'complete' && !isLoading && (
-                        <div className="max-w-6xl mx-auto">
-                            <div className="bg-white rounded-sm border-2 border-black shadow-[4px_4px_0_0_#000] backdrop-blur-md overflow-hidden">
-                                <div className="px-6 sm:px-8 py-6 border-b border-gray-100 bg-gradient-to-r from-green-50 to-emerald-50">
-                                    <div className="flex items-center justify-between">
-                                        <div>
-                                            <h2 className="text-xl sm:text-2xl font-bold text-gray-900 mb-2">
-                                                Project Generated Successfully!
-                                            </h2>
-                                            <p className="text-sm sm:text-base text-gray-600">
-                                                Your complete AI project has been downloaded as a ZIP file
-                                            </p>
+                {workflowState === 'complete' && !isLoading && (
+                    <div className="max-w-6xl mx-auto">
+                        <div className="bg-white rounded-sm border-2 border-black shadow-[4px_4px_0_0_#000] backdrop-blur-md overflow-hidden">
+                            <div className="px-6 sm:px-8 py-6 border-b border-gray-100 bg-gradient-to-r from-green-50 to-emerald-50">
+                                <div className="flex items-center justify-between">
+                                    <div>
+                                        <h2 className="text-xl sm:text-2xl font-bold text-gray-900 mb-2">
+                                            Project Generated Successfully!
+                                        </h2>
+                                        <p className="text-sm sm:text-base text-gray-600">
+                                            Your complete AI project has been downloaded as a ZIP file
+                                        </p>
+                                    </div>
+                                    <div className="hidden sm:block">
+                                        <div className="w-16 h-16 bg-green-100 rounded-full flex items-center justify-center">
+                                            <svg className="w-8 h-8 text-green-600" fill="currentColor" viewBox="0 0 20 20">
+                                                <path fillRule="evenodd" d="M10 18a8 8 0 100-16 8 8 0 000 16zm3.707-9.293a1 1 0 00-1.414-1.414L9 10.586 7.707 9.293a1 1 0 00-1.414 1.414l2 2a1 1 0 001.414 0l4-4z" clipRule="evenodd" />
+                                            </svg>
                                         </div>
-                                        <div className="hidden sm:block">
-                                            <div className="w-16 h-16 bg-green-100 rounded-full flex items-center justify-center">
-                                                <svg className="w-8 h-8 text-green-600" fill="currentColor" viewBox="0 0 20 20">
-                                                    <path fillRule="evenodd" d="M10 18a8 8 0 100-16 8 8 0 000 16zm3.707-9.293a1 1 0 00-1.414-1.414L9 10.586 7.707 9.293a1 1 0 00-1.414 1.414l2 2a1 1 0 001.414 0l4-4z" clipRule="evenodd" />
-                                                </svg>
+                                    </div>
+                                </div>
+                            </div>
+
+                            <div className="px-6 sm:px-8 py-8">
+                                <div className="border-2 border-black rounded-sm p-6 shadow-[3px_3px_0_0_#000]" style={{ background: 'linear-gradient(to bottom right, #DCFCE7, #BBF7D0)' }}>
+                                    <div className="flex items-start">
+                                        <div className="flex-shrink-0">
+                                            <svg className="h-6 w-6 text-green-500" fill="currentColor" viewBox="0 0 20 20">
+                                                <path fillRule="evenodd" d="M10 18a8 8 0 100-16 8 8 0 000 16zm3.707-9.293a1 1 0 00-1.414-1.414L9 10.586 7.707 9.293a1 1 0 00-1.414 1.414l2 2a1 1 0 001.414 0l4-4z" clipRule="evenodd" />
+                                            </svg>
+                                        </div>
+                                        <div className="ml-4">
+                                            <h3 className="text-lg font-semibold mb-2" style={{ color: '#15803D' }}>
+                                                Complete AI Project Generated
+                                            </h3>
+                                            <div className="text-sm sm:text-base leading-relaxed" style={{ color: '#166534' }}>
+                                                <p>
+                                                    Your project has been generated successfully. Download the ZIP file to get your complete project with all the files and structure as planned.
+                                                </p>
                                             </div>
                                         </div>
                                     </div>
                                 </div>
+                            </div>
 
-                                <div className="px-6 sm:px-8 py-8">
-                                    <div className="border-2 border-black rounded-sm p-6 shadow-[3px_3px_0_0_#000]" style={{ background: 'linear-gradient(to bottom right, #DCFCE7, #BBF7D0)' }}>
-                                        <div className="flex items-start">
-                                            <div className="flex-shrink-0">
-                                                <svg className="h-6 w-6 text-green-500" fill="currentColor" viewBox="0 0 20 20">
-                                                    <path fillRule="evenodd" d="M10 18a8 8 0 100-16 8 8 0 000 16zm3.707-9.293a1 1 0 00-1.414-1.414L9 10.586 7.707 9.293a1 1 0 00-1.414 1.414l2 2a1 1 0 001.414 0l4-4z" clipRule="evenodd" />
-                                                </svg>
-                                            </div>
-                                            <div className="ml-4">
-                                                <h3 className="text-lg font-semibold mb-2" style={{ color: '#15803D' }}>
-                                                    Complete AI Project Generated
-                                                </h3>
-                                                <div className="text-sm sm:text-base leading-relaxed" style={{ color: '#166534' }}>
-                                                    <p>
-                                                        Your project has been generated successfully. Download the ZIP file to get your complete project with all the files and structure as planned.
-                                                    </p>
-                                                </div>
-                                            </div>
-                                        </div>
-                                    </div>
-                                </div>
-
-                                <div className="px-6 sm:px-8 py-6 bg-gradient-to-r from-gray-50 to-gray-100 border-t border-gray-100">
-                                    <button
-                                        onClick={handleStartOver}
-                                        className="w-full inline-flex justify-center items-center px-6 py-3 border-2 border-black text-base font-medium rounded-sm text-white focus:outline-none focus:ring-2 focus:ring-offset-2 shadow-[2px_2px_0_0_#000] transform hover:-translate-y-0.5 transition-all duration-200"
-                                        style={{ backgroundColor: '#2563EB' }}
-                                        onMouseEnter={(e) => {
-                                            const target = e.target as HTMLButtonElement;
-                                            target.style.backgroundColor = '#1D4ED8';
-                                        }}
-                                        onMouseLeave={(e) => {
-                                            const target = e.target as HTMLButtonElement;
-                                            target.style.backgroundColor = '#2563EB';
-                                        }}
-                                    >
-                                        Generate Another Project
-                                    </button>
-                                </div>
+                            <div className="px-6 sm:px-8 py-6 bg-gradient-to-r from-gray-50 to-gray-100 border-t border-gray-100">
+                                <button
+                                    onClick={handleStartOver}
+                                    className="w-full inline-flex justify-center items-center px-6 py-3 border-2 border-black text-base font-medium rounded-sm text-white focus:outline-none focus:ring-2 focus:ring-offset-2 shadow-[2px_2px_0_0_#000] transform hover:-translate-y-0.5 transition-all duration-200"
+                                    style={{ backgroundColor: '#2563EB' }}
+                                    onMouseEnter={(e) => {
+                                        const target = e.target as HTMLButtonElement;
+                                        target.style.backgroundColor = '#1D4ED8';
+                                    }}
+                                    onMouseLeave={(e) => {
+                                        const target = e.target as HTMLButtonElement;
+                                        target.style.backgroundColor = '#2563EB';
+                                    }}
+                                >
+                                    Generate Another Project
+                                </button>
                             </div>
                         </div>
-                    )}
-                </div>
-            </main>
+                    </div>
+                )}
+            </div>
         </div>
     );
 }

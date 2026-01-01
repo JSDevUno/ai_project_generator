@@ -83,7 +83,7 @@ export function LoadingSpinner({
   const steps = getSteps();
 
   return (
-    <div className="flex flex-col items-center justify-center py-20 px-6">
+    <div className="flex flex-col items-center justify-center py-8 px-6">
       <div className="rounded-sm shadow-[4px_4px_0_0_#000] border-2 border-black p-10 max-w-lg w-full backdrop-blur-sm" style={{backgroundColor: '#FFFFFF'}}>
         {/* Icon and Title */}
         <div className="text-center mb-8">

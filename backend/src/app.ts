@@ -11,6 +11,7 @@ import { planRouter } from './routes/plan.js';
 import { codeRouter } from './routes/code.js';
 import { streamRouter } from './routes/stream.js';
 import { githubRouter } from './routes/github.js';
+import { notebookRouter } from './routes/notebook.js';
 
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = path.dirname(__filename);
@@ -34,6 +35,7 @@ app.use('/api/plan', planRouter);
 app.use('/api/code', codeRouter);
 app.use('/api/stream', streamRouter);
 app.use('/api/github', githubRouter);
+app.use('/api/notebook', notebookRouter);
 
 // Health check endpoint
 app.get('/api/health', (req, res) => {
