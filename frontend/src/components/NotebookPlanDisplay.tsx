@@ -53,7 +53,7 @@ export function NotebookPlanDisplay({ plan, onApprove, onRevise, onCancel }: Not
                             {plan.title}
                         </h3>
                         <p className="text-base font-semibold" style={{ color: '#1E40AF' }}>
-                            Total Cells: {plan.totalCells}
+                            Total Cells: {plan.cells.length}
                         </p>
                     </div>
 
