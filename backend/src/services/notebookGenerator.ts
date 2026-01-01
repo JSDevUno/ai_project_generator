@@ -157,6 +157,7 @@ Code cells:
    - If plan mentions exploratory style: use exploratory data analysis approach
    - If plan mentions functional style: use functional programming patterns
    - If plan mentions OOP style: use object-oriented programming approach
+   - If plan mentions procedural style: use procedural programming with step-by-step functions
    - If plan mentions minimal/compact: use concise, minimal code
    - If plan mentions verbose/detailed: include extensive comments and explanations
    - If plan mentions production-ready: include error handling, logging, validation
